@@ -8,6 +8,15 @@
 ## TriBITS package file for MC package
 ##---------------------------------------------------------------------------##
 
+
+SET( VIS_SOURCE
+/home/mkim/csg_rendering/raycast/Camera.h
+/home/mkim/csg_rendering/raycast/Ray.h
+/home/mkim/csg_rendering/raycast/TriangleIntersector.h
+/home/mkim/csg_rendering/raycast/RayTracer.h
+/home/mkim/csg_rendering/raycast/MapperRayTracer.cxx
+)
+
 INCLUDE(AppendSet)
 INCLUDE(ProfugusAddCFlags)
 
@@ -23,7 +32,9 @@ TRIBITS_PACKAGE(MC)
 ##---------------------------------------------------------------------------##
 ## B) Set up package-specific options
 ##---------------------------------------------------------------------------##
-
+TRIBITS_PACKAGE_DEFINE_DEPENDENCIES(
+  LIB_REQUIRED_PACKAGES VTKM
+)
 ## ML OPTIONS
 
 ## Turn on ML if that package is enabled
@@ -138,13 +149,12 @@ SET(DRIVER_SOURCES
   mc_driver/mc.cc
   )
 LIST(APPEND HEADERS ${DRIVER_HEADERS})
-LIST(APPEND SOURCES ${DRIVER_SOURCES})
+LIST(APPEND SOURCES ${DRIVER_SOURCES}  ${VIS_SOURCE})
 
 LIST(APPEND HEADERS ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
 ##---------------------------------------------------------------------------##
 ## LIBRARY AND INSTALL TARGETS
-
 TRIBITS_ADD_LIBRARY(
   MC
   NOINSTALLHEADERS ${HEADERS}
@@ -157,7 +167,6 @@ TRIBITS_ADD_EXECUTABLE(
   SOURCES mc_driver/mc.cc
   INSTALLABLE
   )
-
 ##---------------------------------------------------------------------------##
 # Add tests to this package
 
