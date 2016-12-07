@@ -8,13 +8,12 @@
 ## TriBITS package file for MC package
 ##---------------------------------------------------------------------------##
 
-
 SET( VIS_SOURCE
-/home/mkim/csg_rendering/raycast/Camera.h
-/home/mkim/csg_rendering/raycast/Ray.h
-/home/mkim/csg_rendering/raycast/TriangleIntersector.h
-/home/mkim/csg_rendering/raycast/RayTracer.h
-/home/mkim/csg_rendering/raycast/MapperRayTracer.cxx
+mc_driver/raycast/Camera.h
+mc_driver/raycast/Ray.h
+mc_driver/raycast/TriangleIntersector.h
+mc_driver/raycast/RayTracer.h
+mc_driver/raycast/MapperRayTracer.cxx
 )
 
 INCLUDE(AppendSet)
