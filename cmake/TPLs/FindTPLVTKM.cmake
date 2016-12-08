@@ -4,7 +4,7 @@ SET(REQUIRED_HEADERS lala.h)
 SET(REQUIRED_LIBS_NAMES libvtkm_rendering.so)
 MESSAGE("-- Using FIND_PACKAGE(VTKm ...) ...")
 find_package(VTKm 
-PATHS "/home/mkim/local/lib"
+PATHS ${VTKM_LIBRARY_DIRS}
   OPTIONAL_COMPONENTS Serial OpenGL Rendering GLUT
   )
 

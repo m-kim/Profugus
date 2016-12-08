@@ -30,8 +30,8 @@ cmake \
 -DMPI_BASE_DIR:PATH=$MPI_PATH \
 \
 -DTPL_ENABLE_VTKM:BOOL="ON"\
-\DVTKM_INCLUDE_DIRS:PATH=/home/mkim/local/include/ \
-\DVTKM_LIBRARY_DIRS:PATH=/home/mkim/local/lib/ \
+-DVTKM_INCLUDE_DIRS:PATH=/home/mkim/local/include/ \
+-DVTKM_LIBRARY_DIRS:PATH=/home/mkim/local/lib/ \
 \
 -DTPL_ENABLE_HDF5:BOOL="ON" \
 -DHDF5_INCLUDE_DIRS:PATH=/usr/include/hdf5/serial \
