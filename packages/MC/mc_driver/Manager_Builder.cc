@@ -9,7 +9,7 @@
 //---------------------------------------------------------------------------//
 
 #include "Manager_Builder.hh"
-#include "Manager.hh"
+#include "Manager_VTKm.hh"
 
 #include "geometry/RTK_Geometry.hh"
 #include "geometry/Mesh_Geometry.hh"
@@ -37,7 +37,7 @@ auto Manager_Builder::build(const std::string &xml_file) -> SP_Manager_Base
     // If a "CORE" db is present, we're building an RTK_Geometry
     if( master->isSublist("CORE") )
     {
-        manager = std::make_shared<Manager<profugus::Core> >();
+        manager = std::make_shared<Manager_VTKm<profugus::Core> >();
     }
     // If "MESH" db is present, we're building a Mesh_Geometry
     else if( master->isSublist("MESH") )

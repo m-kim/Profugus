@@ -142,6 +142,7 @@ LIST(APPEND SOURCES ${MC_SOURCES})
 FILE(GLOB DRIVER_HEADERS driver/*.hh)
 SET(DRIVER_SOURCES
   mc_driver/Manager.pt.cc
+  mc_driver/Manager_VTKm.pt.cc
   mc_driver/Manager_Builder.cc
   mc_driver/Problem_Builder.pt.cc
   mc_driver/Geometry_Builder.pt.cc
