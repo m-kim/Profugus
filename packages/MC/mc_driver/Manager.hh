@@ -63,8 +63,6 @@ class Manager : public Manager_Base
     // Problem database.
     RCP_ParameterList d_db;
 
-    // Geometry.
-    SP_Geometry d_geometry;
 
     // Physics.
     SP_Physics d_physics;
@@ -89,6 +87,10 @@ class Manager : public Manager_Base
 
     // Output.
     void output();
+
+  protected:
+    // Geometry.
+    SP_Geometry d_geometry;
 
   private:
     // >>> IMPLEMENTATION
