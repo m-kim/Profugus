@@ -78,16 +78,39 @@ public:
     std::cout << "WOOT" << std::endl;
     raycast();
   }
+
+
+  void cell_set_dispatch(const profugus::RTK_Cell &ot)
+  {
+      std::cout << ot.corner()[0] << " " << ot.corner()[1] << " " << ot.corner()[2] << " ";
+      std::cout << ot.pitch(0) << " " << ot.pitch(1) << " ";
+      std::cout << std::endl;
+  }
+  template<class T>
+  void cell_set_dispatch(const profugus::RTK_Array<T> &ot)
+  {
+    int n = 0;
+    for (int k = 0; k < ot.size(def::K); ++k)
+    {
+      for (int j = 0; j < ot.size(def::J); ++j)
+      {
+        for (int i = 0; i < ot.size(def::I); ++i)
+        {
+          n = ot.id(i, j, k);
+          cell_set_dispatch(ot.object(n));
+        }
+      }
+    }
+
+  }
+
   void raycast()
   {
     vtkm::cont::DataSetBuilderExplicitIterative dataSetBuilder;
-    std::shared_ptr<profugus::Core > geo = this->d_geometry;
-    const profugus::geometry::cell_type num_cells = geo->num_cells();
-    const profugus::Core::Array_t array = geo->array();
-    for (int i=0; i<num_cells; i++){
+    std::shared_ptr<profugus::Core > sp_geo_core = this->d_geometry;
 
 
-    }
+    cell_set_dispatch(sp_geo_core->array());
 
     //cylinder
     dataSetBuilder.AddPoint(1, 0.25, 1);
