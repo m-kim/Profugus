@@ -80,38 +80,55 @@ public:
   }
 
 
-  void cell_set_dispatch(const profugus::RTK_Cell &ot)
+  void cell_set_dispatch(const profugus::RTK_Cell &ot,
+                         const def::Space_Vector &corner,
+                         int level)
   {
-      std::cout << ot.corner()[0] << " " << ot.corner()[1] << " " << ot.corner()[2] << " ";
-      std::cout << ot.pitch(0) << " " << ot.pitch(1) << " ";
-      std::cout << std::endl;
+    std::cout << corner[0] << " " << corner[1] << " " << corner[2] << " ";
+    std::cout << ot.pitch(0) << " " << ot.pitch(1) << " ";
+    std::cout << std::endl;
+
   }
   template<class T>
-  void cell_set_dispatch(const profugus::RTK_Array<T> &ot)
+  void cell_set_dispatch(const profugus::RTK_Array<T> &ot,
+                         const def::Space_Vector &corner,
+                         int level)
   {
-    int n = 0;
+
+    def::Space_Vector cur_corner = corner;
     for (int k = 0; k < ot.size(def::K); ++k)
     {
+      cur_corner[def::J] = corner[def::J];
       for (int j = 0; j < ot.size(def::J); ++j)
       {
+        cur_corner[def::I] = corner[def::I];
         for (int i = 0; i < ot.size(def::I); ++i)
         {
-          n = ot.id(i, j, k);
-          cell_set_dispatch(ot.object(n));
-        }
-      }
-    }
 
+          int n = ot.id(i, j, k);
+          cell_set_dispatch(ot.object(n),
+                            cur_corner,
+                            level+1);
+          cur_corner[def::I] += ot.object(n).pitch(def::I);
+        }
+        int n =  ot.id(0,j,k);
+        cur_corner[def::J] += ot.object(n).pitch(def::J);
+      }
+
+    }
+    cur_corner[def::K] = corner[def::K];
   }
 
   void raycast()
   {
     vtkm::cont::DataSetBuilderExplicitIterative dataSetBuilder;
     std::shared_ptr<profugus::Core > sp_geo_core = this->d_geometry;
+    profugus::Core::Array_t ot = sp_geo_core->array();
+    def::Space_Vector corner = ot.corner();
 
-
-    cell_set_dispatch(sp_geo_core->array());
-
+    cell_set_dispatch(ot,
+                      corner,
+                      0);
     //cylinder
     dataSetBuilder.AddPoint(1, 0.25, 1);
     dataSetBuilder.AddPoint(1, .75, 1);
