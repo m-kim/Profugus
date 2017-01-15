@@ -84,10 +84,23 @@ public:
                          const def::Space_Vector &corner,
                          int level)
   {
+#ifdef DEBUG_VTKM
     std::cout << corner[0] << " " << corner[1] << " " << corner[2] << " ";
     std::cout << ot.pitch(0) << " " << ot.pitch(1) << " ";
     std::cout << std::endl;
-
+#endif
+    if (ot.radii().size() > 0){
+      dataSetBuilder.AddPoint(corner[0]/63.0, 0.0, corner[1]/63.0);
+      dataSetBuilder.AddPoint(corner[0]/63.0, 1.0, corner[1]/63.0);
+      dataSetBuilder.AddPoint(0,0,0);
+      dataSetBuilder.AddCell(vtkm::CELL_SHAPE_TRIANGLE);
+      dataSetBuilder.AddCellPoint(cell_cnt++);
+      dataSetBuilder.AddCellPoint(cell_cnt++);
+      dataSetBuilder.AddCellPoint(cell_cnt++);
+      radii.push_back(0.2/63.);
+      radii.push_back(0.2/63.);
+      radii.push_back(0);
+    }
   }
   template<class T>
   void cell_set_dispatch(const profugus::RTK_Array<T> &ot,
@@ -121,52 +134,55 @@ public:
 
   void raycast()
   {
-    vtkm::cont::DataSetBuilderExplicitIterative dataSetBuilder;
     std::shared_ptr<profugus::Core > sp_geo_core = this->d_geometry;
     profugus::Core::Array_t ot = sp_geo_core->array();
     def::Space_Vector corner = ot.corner();
-
+#if 1
+    cell_cnt = 0;
     cell_set_dispatch(ot,
                       corner,
                       0);
+    vtkm::cont::DataSet csg = dataSetBuilder.Create();
+    dataSetFieldAdd.AddPointField(csg, "radius", radii);
+#else
+
+
     //cylinder
     dataSetBuilder.AddPoint(1, 0.25, 1);
     dataSetBuilder.AddPoint(1, .75, 1);
 
     //box
     dataSetBuilder.AddPoint(0.25, 0.25, 0.25);
-    dataSetBuilder.AddPoint(0.75, .75, 0.75);
+//    dataSetBuilder.AddPoint(0.75, .75, 0.75);
 
-    //sphere
-    dataSetBuilder.AddPoint(1.5, 0.5, 1);
+//    //sphere
+//    dataSetBuilder.AddPoint(1.5, 0.5, 1);
 
     dataSetBuilder.AddCell(vtkm::CELL_SHAPE_TRIANGLE);
     dataSetBuilder.AddCellPoint(0);
     dataSetBuilder.AddCellPoint(1);
-
-    dataSetBuilder.AddCell(vtkm::CELL_SHAPE_LINE);
     dataSetBuilder.AddCellPoint(2);
-    dataSetBuilder.AddCellPoint(3);
+    radii.push_back(0.2);
+    radii.push_back(0.2);
 
-    dataSetBuilder.AddCell(vtkm::CELL_SHAPE_VERTEX);
-    dataSetBuilder.AddCellPoint(4);
 
+//    dataSetBuilder.AddCell(vtkm::CELL_SHAPE_VERTEX);
+//    dataSetBuilder.AddCellPoint(4);
+//    radii.push_back(0.1);
     vtkm::cont::DataSet csg = dataSetBuilder.Create();
 
-    vtkm::cont::DataSetFieldAdd dataSetFieldAdd;
 
-    std::vector<vtkm::Float32> radii(5);
-    //cylinder
-    radii[0] = 0.2;
-    radii[1] = 0.2;
-    //box
-    radii[2] = 0;
-    radii[3] = 0;
-    //sphere
-    radii[4] = 0.1;
+//    //cylinder
+//    radii.push_back(0.2/63.);
+//    radii.push_back(0.2/63.);
+//    //box
+//    radii.push_back(0);
+//    radii.push_back(0);
+//    //sphere
+//    radii.push_back(0.1);
 
     dataSetFieldAdd.AddPointField(csg, "radius", radii);
-
+#endif
     lastx = lasty = -1;
 
   //    glutInit(&argc, argv);
@@ -218,7 +234,12 @@ public:
   //writer.write(img);
   }
 private:
-  int lastx, lasty;
+
+  vtkm::cont::DataSetBuilderExplicitIterative dataSetBuilder;
+  vtkm::cont::DataSetFieldAdd dataSetFieldAdd;
+  std::vector<vtkm::Float32> radii;
+
+  int lastx, lasty, cell_cnt;
   vtkm::rendering::View3D *view;
 };
 
