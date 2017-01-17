@@ -107,6 +107,23 @@ public:
       radii.push_back(ot.radii()[0]/tot_len[def::X]);
       radii.push_back(ot.radii()[0]/tot_len[def::X]);
     }
+    else if(!quick_stop){
+      //box
+      def::Space_Vector lower, upper;
+      ot.get_extents(lower, upper);
+      dataSetBuilder.AddPoint(lower[0], lower[2], lower[1]);
+      dataSetBuilder.AddPoint(upper[0], upper[2], upper[1]);
+
+      dataSetBuilder.AddCell(vtkm::CELL_SHAPE_LINE);
+      dataSetBuilder.AddCellPoint(0);
+      dataSetBuilder.AddCellPoint(1);
+
+      //box
+      radii.push_back(0.0);
+      radii.push_back(0.0);
+
+//      quick_stop = 1;
+    }
   }
   template<class T>
   void cell_set_dispatch(const profugus::RTK_Array<T> &ot,
@@ -174,6 +191,7 @@ public:
     profugus::Core::Array_t ot = sp_geo_core->array();
     def::Space_Vector corner = ot.corner();
 #if 1
+    quick_stop = 0;
     tot_len = total_length(ot);
     cell_cnt = 0;
     cell_set_dispatch(ot,
@@ -271,7 +289,7 @@ public:
   //writer.write(img);
   }
 private:
-
+  bool quick_stop;
   vtkm::cont::DataSetBuilderExplicitIterative dataSetBuilder;
   vtkm::cont::DataSetFieldAdd dataSetFieldAdd;
   std::vector<vtkm::Float32> radii;
