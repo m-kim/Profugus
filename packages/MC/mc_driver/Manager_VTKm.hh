@@ -93,11 +93,11 @@ public:
       def::Space_Vector lower, upper;
       ot.get_extents(lower, upper);
       dataSetBuilder.AddPoint((corner[def::X] - lower[def::X])/tot_len[def::X],
-          0.0,
+          (corner[def::Z])/tot_len[def::Z],
           (corner[def::Y] - lower[def::Y])/tot_len[def::Y]);
-      dataSetBuilder.AddPoint((corner[def::X] - upper[def::X])/tot_len[def::X],
-          1.0,
-          (corner[def::Y] - upper[def::Y])/tot_len[def::Y]);
+      dataSetBuilder.AddPoint((corner[def::X] - lower[def::X])/tot_len[def::X],
+          (corner[def::Z] + ot.height())/tot_len[def::Z] ,
+          (corner[def::Y] - lower[def::Y])/tot_len[def::Y]);
       dataSetBuilder.AddPoint(0,0,0);
       dataSetBuilder.AddCell(vtkm::CELL_SHAPE_TRIANGLE);
       dataSetBuilder.AddCellPoint(cell_cnt++);
@@ -105,7 +105,7 @@ public:
       dataSetBuilder.AddCellPoint(cell_cnt++);
       radii.push_back(ot.radii()[0]/tot_len[def::X]);
       radii.push_back(ot.radii()[0]/tot_len[def::X]);
-      radii.push_back(0);
+      radii.push_back(ot.radii()[0]/tot_len[def::X]);
     }
   }
   template<class T>
