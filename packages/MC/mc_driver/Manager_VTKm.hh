@@ -90,15 +90,21 @@ public:
     std::cout << std::endl;
 #endif
     if (ot.radii().size() > 0){
-      dataSetBuilder.AddPoint(corner[0]/63.0, 0.0, corner[1]/63.0);
-      dataSetBuilder.AddPoint(corner[0]/63.0, 1.0, corner[1]/63.0);
+      def::Space_Vector lower, upper;
+      ot.get_extents(lower, upper);
+      dataSetBuilder.AddPoint((corner[def::X] - lower[def::X])/tot_len[def::X],
+          0.0,
+          (corner[def::Y] - lower[def::Y])/tot_len[def::Y]);
+      dataSetBuilder.AddPoint((corner[def::X] - upper[def::X])/tot_len[def::X],
+          1.0,
+          (corner[def::Y] - upper[def::Y])/tot_len[def::Y]);
       dataSetBuilder.AddPoint(0,0,0);
       dataSetBuilder.AddCell(vtkm::CELL_SHAPE_TRIANGLE);
       dataSetBuilder.AddCellPoint(cell_cnt++);
       dataSetBuilder.AddCellPoint(cell_cnt++);
       dataSetBuilder.AddCellPoint(cell_cnt++);
-      radii.push_back(0.2/63.);
-      radii.push_back(0.2/63.);
+      radii.push_back(ot.radii()[0]/tot_len[def::X]);
+      radii.push_back(ot.radii()[0]/tot_len[def::X]);
       radii.push_back(0);
     }
   }
@@ -132,15 +138,46 @@ public:
     cur_corner[def::K] = corner[def::K];
   }
 
+  def::Space_Vector total_length(const profugus::Core::Array_t ot)
+  {
+    def::Space_Vector lower, upper, tot_lower, tot_upper;
+    for (int k = 0; k < ot.size(def::K); ++k)
+    {
+      ot.get_extents(lower, upper);
+      tot_lower[def::Z] += lower[def::Z];
+      tot_upper[def::Z] += upper[def::Z];
+
+    }
+    for (int j = 0; j < ot.size(def::J); ++j)
+    {
+      ot.get_extents(lower, upper);
+      tot_lower[def::Y] += lower[def::Y];
+      tot_upper[def::Y] += upper[def::Y];
+    }
+    for (int i = 0; i < ot.size(def::I); ++i)
+    {
+
+      //int n = ot.id(i, j, k);
+      ot.get_extents(lower, upper);
+      tot_lower[def::X] += lower[def::X];
+      tot_upper[def::X] += upper[def::X];
+
+    }
+
+    return upper - lower;
+
+  }
+
   void raycast()
   {
     std::shared_ptr<profugus::Core > sp_geo_core = this->d_geometry;
     profugus::Core::Array_t ot = sp_geo_core->array();
     def::Space_Vector corner = ot.corner();
 #if 1
+    tot_len = total_length(ot);
     cell_cnt = 0;
     cell_set_dispatch(ot,
-                      corner,
+                      corner,                      
                       0);
     vtkm::cont::DataSet csg = dataSetBuilder.Create();
     dataSetFieldAdd.AddPointField(csg, "radius", radii);
@@ -238,7 +275,7 @@ private:
   vtkm::cont::DataSetBuilderExplicitIterative dataSetBuilder;
   vtkm::cont::DataSetFieldAdd dataSetFieldAdd;
   std::vector<vtkm::Float32> radii;
-
+  def::Space_Vector tot_len;
   int lastx, lasty, cell_cnt;
   vtkm::rendering::View3D *view;
 };
