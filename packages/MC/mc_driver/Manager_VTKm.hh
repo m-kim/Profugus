@@ -92,35 +92,39 @@ public:
     if (ot.radii().size() > 0){
       def::Space_Vector lower, upper;
       ot.get_extents(lower, upper);
-      dataSetBuilder.AddPoint((corner[def::X] - lower[def::X])/tot_len[def::X],
-          (corner[def::Z])/tot_len[def::Z],
-          (corner[def::Y] - lower[def::Y])/tot_len[def::Y]);
-      dataSetBuilder.AddPoint((corner[def::X] - lower[def::X])/tot_len[def::X],
-          (corner[def::Z] + ot.height())/tot_len[def::Z] ,
-          (corner[def::Y] - lower[def::Y])/tot_len[def::Y]);
+      dataSetBuilder.AddPoint((corner[def::X] - lower[def::X]),
+          (corner[def::Z]),
+          (corner[def::Y] - lower[def::Y]));
+      dataSetBuilder.AddPoint((corner[def::X] - lower[def::X]),
+          (corner[def::Z] + ot.height()),
+          (corner[def::Y] - lower[def::Y]));
       dataSetBuilder.AddPoint(0,0,0);
       dataSetBuilder.AddCell(vtkm::CELL_SHAPE_TRIANGLE);
       dataSetBuilder.AddCellPoint(cell_cnt++);
       dataSetBuilder.AddCellPoint(cell_cnt++);
       dataSetBuilder.AddCellPoint(cell_cnt++);
-      radii.push_back(ot.radii()[0]/tot_len[def::X]);
-      radii.push_back(ot.radii()[0]/tot_len[def::X]);
-      radii.push_back(ot.radii()[0]/tot_len[def::X]);
+      radii.push_back(ot.radii()[0]);
+      radii.push_back(ot.radii()[0]);
+      radii.push_back(ot.radii()[0]);
     }
     else if(!quick_stop){
       //box
       def::Space_Vector lower, upper;
       ot.get_extents(lower, upper);
-      dataSetBuilder.AddPoint(lower[0], lower[2], lower[1]);
-      dataSetBuilder.AddPoint(upper[0], upper[2], upper[1]);
+      dataSetBuilder.AddPoint(corner[0],
+          corner[2],
+          corner[1]);
+      dataSetBuilder.AddPoint(corner[0] - lower[0] + upper[0],
+          corner[2] - lower[0] + upper[2],
+          corner[1] - lower[1] + upper[1]);
 
       dataSetBuilder.AddCell(vtkm::CELL_SHAPE_LINE);
       dataSetBuilder.AddCellPoint(0);
       dataSetBuilder.AddCellPoint(1);
 
       //box
-      radii.push_back(0.0);
-      radii.push_back(0.0);
+      radii.push_back(1.0);
+      radii.push_back(1.0);
 
 //      quick_stop = 1;
     }
