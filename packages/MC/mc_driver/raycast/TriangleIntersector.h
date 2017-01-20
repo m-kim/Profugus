@@ -93,7 +93,7 @@ public:
                                   FieldOut<>,
                                   FieldOut<>,
                                   FieldOut<>,
-								  FieldOut<>,
+
                                   WholeArrayIn<vtkm::rendering::raytracing::Vec3RenderingTypes>,
                                   WholeArrayIn<vtkm::rendering::raytracing::ScalarRenderingTypes>);
     typedef void ExecutionSignature(_1,
@@ -103,8 +103,7 @@ public:
                                     _5,
                                     _6,
                                     _7,
-                                    _8,
-									_9);
+                                    _8);
 
 	typedef vtkm::Vec<vtkm::Float32, 3> vec3;
 
@@ -265,10 +264,9 @@ t = (nd - mn) / nn;
 		void operator()(const vtkm::Vec<vtkm::Float32, 3> &rayDir,
 			const vtkm::Vec<vtkm::Float32, 3> &rayOrigin,
 			vtkm::Float32 &distance,
-			vtkm::Float32 &minU,
-			vtkm::Float32 &minV,
 			vtkm::Id &hitIndex,
 			vtkm::Vec<vtkm::Float32, 3> &normal,
+      vtkm::Float32 &scalar_out,
 			const PointPortalType &points,
 			const ScalarPortalType &scalars) const
 	{
@@ -313,6 +311,7 @@ t = (nd - mn) / nn;
 			vtkm::Id cur_offset = OffsetsPortal.Get(i);
 			switch (type) {
 			case vtkm::CELL_SHAPE_TRIANGLE:
+        scalar_out = 0.4;
 				cyl_bottom = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset));
 				cyl_top = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset + 1));
 				cyl_radius = vtkm::Float32(scalars.Get(cur_offset));
@@ -361,19 +360,21 @@ t = (nd - mn) / nn;
 
 
 	   if (minDistance < MaxDistance) {
-			vec3 pos = rayOrigin + rayDir * minDistance;
+       scalar_out = 1.0;
+      vec3 pos = rayOrigin + rayDir * minDistance;
 			vec3 pt;
 			switch (fin_type) {
 			//cylinder
 			case vtkm::CELL_SHAPE_TRIANGLE:
 				pt = vec3(points.Get(fin_offset)[0], pos[1], points.Get(fin_offset)[2]);
         normal = pos - pt;
-				vtkm::Normalize(normal);
+        vtkm::Normalize(normal);
 				break;
 
 			//box
 			case vtkm::CELL_SHAPE_LINE:
-				if (ret[2] == 0) {
+        scalar_out = 0.4;
+        if (ret[2] == 0) {
 				normal = vec3(-1.0, 0, 0);
 				}
 				else if (ret[2] == 1) {
@@ -537,10 +538,11 @@ t = (nd - mn) / nn;
       .Invoke( rays.Dir,
                rays.Origin,
                rays.Distance,
-               rays.U,
-               rays.V,
+//               rays.U,
+//               rays.V,
                rays.HitIdx,
 			   rays.Normal,
+               rays.Scalar,
                coordsHandle,
                *scalarField);
   }
