@@ -90,27 +90,41 @@ public:
     std::cout << std::endl;
 #endif
     if (ot.radii().size() > 0){
-      def::Space_Vector lower, upper;
-      ot.get_extents(lower, upper);
-      dataSetBuilder.AddPoint((corner[def::X] - lower[def::X])/tot_len[def::X],
-          (corner[def::Z])/tot_len[def::Z],
-          (corner[def::Y] - lower[def::Y])/tot_len[def::Y]);
-      dataSetBuilder.AddPoint((corner[def::X] - lower[def::X])/tot_len[def::X],
-          (corner[def::Z] + ot.height())/tot_len[def::Z] ,
-          (corner[def::Y] - lower[def::Y])/tot_len[def::Y]);
-      dataSetBuilder.AddPoint(0,0,0);
-      dataSetBuilder.AddCell(vtkm::CELL_SHAPE_TRIANGLE);
-      dataSetBuilder.AddCellPoint(cell_cnt++);
-      dataSetBuilder.AddCellPoint(cell_cnt++);
-      dataSetBuilder.AddCellPoint(cell_cnt++);
-      radii.push_back(ot.radii()[0]/tot_len[def::X]);
-      radii.push_back(ot.radii()[0]/tot_len[def::X]);
-      radii.push_back(ot.radii()[0]/tot_len[def::X]);
+//      if (!quick_stop){
+        def::Space_Vector lower, upper;
+        ot.get_extents(lower, upper);
+        def::Space_Vector new_low, new_up;
+        new_low[def::X] = new_up[def::X] = (corner[def::X] - lower[def::X])/tot_len[def::X];
+        new_low[def::Y] = (corner[def::Z])/tot_len[def::Z];
+        new_low[def::Z] = new_up[def::Z] = (corner[def::Y] - lower[def::Y])/tot_len[def::Y];
+
+        new_up[def::Y] = (corner[def::Z] + ot.height())/tot_len[def::Z];
+
+        dataSetBuilder.AddPoint(new_low[def::X],
+            new_low[def::Y],
+            new_low[def::Z]);
+        dataSetBuilder.AddPoint(new_up[def::X],
+            new_up[def::Y],
+            new_up[def::Z]);
+        dataSetBuilder.AddPoint(0,0,0);
+        dataSetBuilder.AddCell(vtkm::CELL_SHAPE_TRIANGLE);
+        dataSetBuilder.AddCellPoint(cell_cnt++);
+        dataSetBuilder.AddCellPoint(cell_cnt++);
+        dataSetBuilder.AddCellPoint(cell_cnt++);
+        radii.push_back(ot.radii()[0]/tot_len[def::X]);
+        radii.push_back(ot.radii()[0]/tot_len[def::X]);
+        radii.push_back(ot.radii()[0]/tot_len[def::X]);
+//        quick_stop = 1;
+//      }
     }
-    else if(!quick_stop){
+    else {
       //box
       def::Space_Vector lower, upper;
       ot.get_extents(lower, upper);
+      upper = corner + upper - lower;
+      lower = corner;
+      lower /= tot_len[def::X];
+      upper /= tot_len[def::X];
       dataSetBuilder.AddPoint(lower[0], lower[2], lower[1]);
       dataSetBuilder.AddPoint(upper[0], upper[2], upper[1]);
 
@@ -121,8 +135,6 @@ public:
       //box
       radii.push_back(0.0);
       radii.push_back(0.0);
-
-//      quick_stop = 1;
     }
   }
   template<class T>
