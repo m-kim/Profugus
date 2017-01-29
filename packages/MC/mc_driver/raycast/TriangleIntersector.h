@@ -177,22 +177,24 @@ public:
 
 		return vec3(1, tmin, face);
 	}
-	vec3 cylinder(const vec3 &ray_start,
+vec3 cylinder(const vec3 &ray_start,
 		const vec3 &ray_direction,
 		const vec3 &p,
 		const vec3 &q,
 		float r) const
 	{
 		float t = 0;
+    vec3 ray_end = ray_start + ray_direction * 1000;
 		vec3 d = q - p;
 		vec3 m = ray_start - p;
+    vec3 n = ray_end - ray_start;
 		float md = dot(m, d);
-		float nd = dot(ray_direction, d);
+    float nd = dot(n, d);
 		float dd = dot(d, d);
 		if ((md < 0.0f) && (md + nd < 0.0f)) return vec3(0, 0, 0); //segment outside 'p' side of cylinder
 		if ((md > dd) && (md + nd  > dd))  return vec3(0, 0, 0); //segment outside 'q' side of cylinder
-		float nn = dot(ray_direction, ray_direction);
-		float mn = dot(m, ray_direction);
+    float nn = dot(n, n);
+    float mn = dot(m, n);
 		float a = dd * nn - nd *nd;
 		float k = dot(m, m) - r * r;
 		float c = dd * k - md * md;
@@ -315,7 +317,8 @@ t = (nd - mn) / nn;
 				cyl_bottom = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset));
 				cyl_top = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset + 1));
 				cyl_radius = vtkm::Float32(scalars.Get(cur_offset));
-				ret = cylinder(rayOrigin, rayDir, cyl_bottom, cyl_top, cyl_radius);
+        //ret = vtkm::Vec<vtkm::Float32, 3>(1,1,1);
+        ret = cylinder(rayOrigin, rayDir, cyl_bottom, cyl_top, cyl_radius);
 				if (ret[0] > 0) {
 					if (ret[1] < minDistance) {
 						minDistance = ret[1];
