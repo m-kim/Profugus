@@ -52,8 +52,6 @@ public:
 
     bool Occlusion;
     vtkm::Float32 MaxDistance;
-    Float4ArrayPortal FlatBVH;
-    Int4ArrayPortal Leafs;
 	const vtkm::cont::DynamicCellSet *Cells;
 	vtkm::cont::ArrayHandle<vtkm::UInt8>::PortalConstControl ShapesPortal;
 	vtkm::cont::ArrayHandle<vtkm::Id>::PortalConstControl OffsetsPortal;
@@ -66,12 +64,9 @@ public:
     VTKM_CONT_EXPORT
     Intersector(bool occlusion,
                 vtkm::Float32 maxDistance,
-                vtkm::rendering::raytracing::LinearBVH &bvh,
 				const vtkm::cont::DynamicCellSet *cellset)
       : Occlusion(occlusion),
         MaxDistance(maxDistance),
-        FlatBVH(bvh.FlatBVH.PrepareForInput( DeviceAdapter() )),
-        Leafs( bvh.LeafNodes.PrepareForInput( DeviceAdapter() )),
 		Cells(cellset)
     {
     vtkm::cont::CellSetExplicit<> cellSetExplicit = Cells->Cast<vtkm::cont::CellSetExplicit<> >();
@@ -534,12 +529,11 @@ t = (nd - mn) / nn;
 
   VTKM_CONT_EXPORT
   void run(Ray<DeviceAdapter> &rays,
-    vtkm::rendering::raytracing::LinearBVH &bvh,
            const vtkm::cont::DynamicCellSet *cells,
            vtkm::cont::DynamicArrayHandleCoordinateSystem coordsHandle,
            const vtkm::cont::Field *scalarField)
   {
-    vtkm::worklet::DispatcherMapField< Intersector >( Intersector( false, 10000000.f, bvh, cells) )
+    vtkm::worklet::DispatcherMapField< Intersector >( Intersector( false, 10000000.f, cells) )
       .Invoke( rays.Dir,
                rays.Origin,
                rays.Distance,

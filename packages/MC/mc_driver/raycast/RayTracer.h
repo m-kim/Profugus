@@ -227,7 +227,6 @@ public:
 
   VTKM_CONT_EXPORT
   void run(Ray<DeviceAdapter> &rays,
-		   vtkm::rendering::raytracing::LinearBVH &bvh,
            vtkm::cont::DynamicArrayHandleCoordinateSystem &coordsHandle,
            const vtkm::cont::Field *scalarField,
            const vtkm::Range &scalarRange)
@@ -395,8 +394,6 @@ class RayTracer
 protected:
   bool IsSceneDirty;
   Ray<DeviceAdapter> Rays;
-  vtkm::rendering::raytracing::LinearBVHBuilder<DeviceAdapter> Builder;
-  vtkm::rendering::raytracing::LinearBVH Bvh;
   Camera<DeviceAdapter> camera;
   vtkm::cont::DynamicArrayHandleCoordinateSystem CoordsHandle;
   const vtkm::cont::Field *ScalarField;
@@ -458,7 +455,6 @@ public:
   VTKM_CONT_EXPORT
   void Init()
   {
-    Builder.run(CoordsHandle, Indices, NumberOfTriangles, Bvh);
     camera.CreateRays(Rays, DataBounds);
     IsSceneDirty = false;
   }
@@ -473,9 +469,9 @@ public:
     }
 
     TriangleIntersector<DeviceAdapter> intersector;
-    intersector.run(Rays, Bvh, Cells, CoordsHandle, ScalarField );
+    intersector.run(Rays, Cells, CoordsHandle, ScalarField );
     Reflector<DeviceAdapter> reflector;
-    reflector.run(Rays, Bvh, CoordsHandle, ScalarField, ScalarRange);
+    reflector.run(Rays, CoordsHandle, ScalarField, ScalarRange);
     vtkm::worklet::DispatcherMapField< IntersectionPoint >( IntersectionPoint() )
       .Invoke( Rays.HitIdx,
                Rays.Distance,
