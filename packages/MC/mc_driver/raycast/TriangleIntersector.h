@@ -305,6 +305,7 @@ t = (nd - mn) / nn;
 		vec3 box_ll, box_ur;
 
 		vtkm::UInt8 fin_type = 0;
+    vtkm::UInt8 face = 0;
 		vtkm::Id fin_offset = 0;
 		vec3 fin_center;
 
@@ -312,22 +313,22 @@ t = (nd - mn) / nn;
 			vtkm::UInt8 type = ShapesPortal.Get(i);
 			vtkm::Id cur_offset = OffsetsPortal.Get(i);
 			switch (type) {
-			case vtkm::CELL_SHAPE_TRIANGLE:
+      case vtkm::CELL_SHAPE_TRIANGLE:
         scalar_out = 0.4;
-				cyl_bottom = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset));
-				cyl_top = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset + 1));
-				cyl_radius = vtkm::Float32(scalars.Get(cur_offset));
+        cyl_bottom = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset));
+        cyl_top = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset + 1));
+        cyl_radius = vtkm::Float32(scalars.Get(cur_offset));
         //ret = vtkm::Vec<vtkm::Float32, 3>(1,1,1);
         ret = cylinder(rayOrigin, rayDir, cyl_bottom, cyl_top, cyl_radius);
-				if (ret[0] > 0) {
-					if (ret[1] < minDistance) {
-						minDistance = ret[1];
-						hitIndex = 35;
-						fin_type = type;
-						fin_offset = cur_offset;
-					}
-				}
-				break;
+        if (ret[0] > 0) {
+          if (ret[1] < minDistance) {
+            minDistance = ret[1];
+            hitIndex = 35;
+            fin_type = type;
+            fin_offset = cur_offset;
+          }
+        }
+        break;
 			
 
 			case vtkm::CELL_SHAPE_LINE:
@@ -340,24 +341,25 @@ t = (nd - mn) / nn;
 						hitIndex = 35;
 						fin_type = type;
 						fin_offset = cur_offset;
-					}
+            face = ret[2];
+          }
 				}
 				break;
 			
-			case vtkm::CELL_SHAPE_VERTEX:
-				center = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset));//1.5;
-				ret = sphere(rayOrigin, rayDir, center, vtkm::Float32(scalars.Get(cur_offset)));
-				if (ret[0] > 0) {
-					if (ret[1] < minDistance) {
-						minDistance = ret[1];
-						hitIndex = 35;
-						fin_type = type;
-						fin_offset = cur_offset;
-						fin_center = center;
-					}
-				}
-				break;
-			}
+      case vtkm::CELL_SHAPE_VERTEX:
+        center = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset));//1.5;
+        ret = sphere(rayOrigin, rayDir, center, vtkm::Float32(scalars.Get(cur_offset)));
+        if (ret[0] > 0) {
+          if (ret[1] < minDistance) {
+            minDistance = ret[1];
+            hitIndex = 35;
+            fin_type = type;
+            fin_offset = cur_offset;
+            fin_center = center;
+          }
+        }
+        break;
+      }
 
 		}
 
@@ -375,25 +377,25 @@ t = (nd - mn) / nn;
 				break;
 
 			//box
-			case vtkm::CELL_SHAPE_LINE:
+      case vtkm::CELL_SHAPE_LINE:
         scalar_out = 0.4;
-        if (ret[2] == 0) {
-				normal = vec3(-1.0, 0, 0);
+        if (face == 0) {
+          normal = vec3(-1.0, 0, 0);
 				}
-				else if (ret[2] == 1) {
-				normal = vec3(1.0, 0, 0);
+        else if (face == 1) {
+          normal = vec3(1.0, 0, 0);
 				}
-				else if (ret[2] == 2) {
-				normal = vec3(0.0, -1.0, 0);
+        else if (face == 2) {
+          normal = vec3(0.0, -1.0, 0);
 				}
-				else if (ret[2] == 3) {
-				normal = vec3(0.0, 1.0, 0);
+        else if (face == 3) {
+          normal = vec3(0.0, 1.0, 0);
 				}
-				else if (ret[2] == 4) {
-				normal = vec3(0.0, 0.0, 1.0);
+        else if (face == 4) {
+          normal = vec3(0.0, 0.0, -1.0);
 				}
-				else if (ret[2] == 5) {
-				normal = vec3(0.0, 0.0, -1.0);
+        else if (face == 5) {
+          normal = vec3(0.0, 0.0, 1.0);
 				}
 
 				break;
