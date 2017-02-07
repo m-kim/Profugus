@@ -94,11 +94,11 @@ public:
         def::Space_Vector lower, upper;
         ot.get_extents(lower, upper);
         def::Space_Vector new_low, new_up;
-        new_low[def::X] = new_up[def::X] = (corner[def::X] - lower[def::X])/tot_len[def::X];
-        new_low[def::Y] = (corner[def::Z])/tot_len[def::Z];
-        new_low[def::Z] = new_up[def::Z] = (corner[def::Y] - lower[def::Y])/tot_len[def::Y];
+        new_low[def::X] = new_up[def::X] = (corner[def::X] - lower[def::X]);
+        new_low[def::Y] = new_up[def::Y] = (corner[def::Y] - lower[def::Y]);
 
-        new_up[def::Y] = (corner[def::Z] + ot.height())/tot_len[def::Z];
+        new_low[def::Z] = (corner[def::Z]);
+        new_up[def::Z] = (corner[def::Z] + ot.height());
 
         dataSetBuilder.AddPoint(new_low[def::X],
             new_low[def::Y],
@@ -111,9 +111,9 @@ public:
         dataSetBuilder.AddCellPoint(cell_cnt++);
         dataSetBuilder.AddCellPoint(cell_cnt++);
         dataSetBuilder.AddCellPoint(cell_cnt++);
-        radii.push_back(ot.radii()[0]/tot_len[def::X]);
-        radii.push_back(ot.radii()[0]/tot_len[def::X]);
-        radii.push_back(ot.radii()[0]/tot_len[def::X]);
+        radii.push_back(ot.radii()[0]);
+        radii.push_back(ot.radii()[0]);
+        radii.push_back(ot.radii()[0]);
 //        quick_stop = 1;
 //      }
     }
@@ -123,18 +123,16 @@ public:
       ot.get_extents(lower, upper);
       upper = corner + upper - lower;
       lower = corner;
-      lower /= tot_len[def::X];
-      upper /= tot_len[def::X];
-      dataSetBuilder.AddPoint(lower[0], lower[2], lower[1]);
-      dataSetBuilder.AddPoint(upper[0], upper[2], upper[1]);
+      dataSetBuilder.AddPoint(lower[0], lower[1], lower[2]);
+      dataSetBuilder.AddPoint(upper[0], upper[1], upper[2]);
 
       dataSetBuilder.AddCell(vtkm::CELL_SHAPE_LINE);
-      dataSetBuilder.AddCellPoint(0);
-      dataSetBuilder.AddCellPoint(1);
+      dataSetBuilder.AddCellPoint(cell_cnt++);
+      radii.push_back(0.);
+      dataSetBuilder.AddCellPoint(cell_cnt++);
+      radii.push_back(0.);
 
       //box
-      radii.push_back(1.0);
-      radii.push_back(1.0);
 
 //      quick_stop = 1;
     }
@@ -274,7 +272,22 @@ public:
                                           vtkm::rendering::ColorTable("thermal")));
 
     //Create vtkm rendering stuff.
-    view = new vtkm::rendering::View3D(scene, mapper, canvas, bg);
+    vtkm::rendering::Camera new_cam;
+    vtkm::Bounds spatialBounds = scene.GetSpatialBounds();
+    new_cam.SetPosition(vtkm::Vec<vtkm::Float32, 3>(0,1,0));
+    new_cam.SetViewUp(vtkm::Vec<vtkm::Float32,3>(0,0,1));
+    new_cam.ResetToBounds(spatialBounds);
+    vtkm::Vec<vtkm::Float32, 3> pos = new_cam.GetPosition();
+    pos[1] *= 1;
+    pos[2] += pos[2] * 4.0;
+    new_cam.SetPosition(pos);
+
+
+
+    view = new vtkm::rendering::View3D(scene, mapper, canvas, new_cam, bg);
+    new_cam.SetPosition(pos);
+    view->SetCamera(new_cam);
+
     view->Initialize();
     //glutMainLoop();
     view->Paint();
