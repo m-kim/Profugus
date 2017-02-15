@@ -82,7 +82,8 @@ public:
 
   void cell_set_dispatch(const profugus::RTK_Cell &ot,
                          const def::Space_Vector &corner,
-                         int level)
+                         int level,
+                         int offset)
   {
 #ifdef DEBUG_VTKM
     std::cout << corner[0] << " " << corner[1] << " " << corner[2] << " ";
@@ -108,6 +109,7 @@ public:
             new_up[def::Z]);
         dataSetBuilder.AddPoint(0,0,0);
         dataSetBuilder.AddCell(vtkm::CELL_SHAPE_TRIANGLE);
+        child_idx.push_back(cell_cnt);
         dataSetBuilder.AddCellPoint(cell_cnt++);
         dataSetBuilder.AddCellPoint(cell_cnt++);
         dataSetBuilder.AddCellPoint(cell_cnt++);
@@ -127,6 +129,7 @@ public:
       dataSetBuilder.AddPoint(upper[0], upper[1], upper[2]);
 
       dataSetBuilder.AddCell(vtkm::CELL_SHAPE_LINE);
+      child_idx.push_back(cell_cnt);
       dataSetBuilder.AddCellPoint(cell_cnt++);
       radii.push_back(0.);
       dataSetBuilder.AddCellPoint(cell_cnt++);
@@ -140,10 +143,56 @@ public:
   template<class T>
   void cell_set_dispatch(const profugus::RTK_Array<T> &ot,
                          const def::Space_Vector &corner,
-                         int level)
-  {
+                         int level_cnt,
+                         int offset)
+{
 
-    def::Space_Vector cur_corner = corner;
+      //wish I could just copy d_Nc_offset
+  int new_offset = offset;
+  def::Space_Vector cur_corner = corner;
+
+  for (int k = 0; k < ot.size(def::K); ++k)
+  {
+    cur_corner[def::J] = corner[def::J];
+    for (int j = 0; j < ot.size(def::J); ++j)
+    {
+      cur_corner[def::I] = corner[def::I];
+      for (int i = 0; i < ot.size(def::I); ++i)
+      {
+          int n = ot.id(i, j, k);
+          child_cnt.push_back( ot.object(n).num_cells());
+          new_offset += ot.object(n).num_cells();
+          child_idx.push_back(new_offset);
+
+          child_vtx.push_back(cell_cnt);
+          dataSetBuilder.AddCell(vtkm::CELL_SHAPE_HEXAHEDRON);
+          dataSetBuilder.AddPoint(cur_corner[0], cur_corner[1], cur_corner[2]);
+          dataSetBuilder.AddPoint(cur_corner[0] + ot.object(n).pitch(def::I), cur_corner[1] + ot.object(n).pitch(def::J), cur_corner[2] + ot.object(n).height());
+          dataSetBuilder.AddPoint(cur_corner[0] + ot.object(n).pitch(def::I), cur_corner[1] + ot.object(n).pitch(def::J), cur_corner[2] + ot.object(n).height());
+          dataSetBuilder.AddPoint(cur_corner[0] + ot.object(n).pitch(def::I), cur_corner[1] + ot.object(n).pitch(def::J), cur_corner[2] + ot.object(n).height());
+          dataSetBuilder.AddPoint(cur_corner[0] + ot.object(n).pitch(def::I), cur_corner[1] + ot.object(n).pitch(def::J), cur_corner[2] + ot.object(n).height());
+          dataSetBuilder.AddPoint(cur_corner[0] + ot.object(n).pitch(def::I), cur_corner[1] + ot.object(n).pitch(def::J), cur_corner[2] + ot.object(n).height());
+
+          dataSetBuilder.AddCellPoint(cell_cnt++);
+          dataSetBuilder.AddCellPoint(cell_cnt++);
+          dataSetBuilder.AddCellPoint(cell_cnt++);
+          dataSetBuilder.AddCellPoint(cell_cnt++);
+          dataSetBuilder.AddCellPoint(cell_cnt++);
+          dataSetBuilder.AddCellPoint(cell_cnt++);
+          radii.push_back(0.);
+          radii.push_back(0.);
+          radii.push_back(0.);
+          radii.push_back(0.);
+          radii.push_back(0.);
+          radii.push_back(0.);
+
+          cur_corner[def::I] += ot.object(n).pitch(def::I);
+        }
+        int n =  ot.id(0,j,k);
+        cur_corner[def::J] += ot.object(n).pitch(def::J);
+    }
+  }
+  cur_corner = corner;
     for (int k = 0; k < ot.size(def::K); ++k)
     {
       cur_corner[def::J] = corner[def::J];
@@ -156,7 +205,8 @@ public:
           int n = ot.id(i, j, k);
           cell_set_dispatch(ot.object(n),
                             cur_corner,
-                            level+1);
+                            level_cnt+1,
+                            new_offset);
           cur_corner[def::I] += ot.object(n).pitch(def::I);
         }
         int n =  ot.id(0,j,k);
@@ -197,19 +247,83 @@ public:
 
   }
 
+  void test_flat(
+          vtkm::Vec<vtkm::Float32,3> &pt)
+  {
+    vtkm::cont::ArrayHandle<vtkm::UInt8>::PortalConstControl ShapesPortal;
+    vtkm::cont::ArrayHandle<vtkm::Id>::PortalConstControl OffsetsPortal;
+    vtkm::cont::DynamicCellSet dcs = csg.GetCellSet();
+
+    vtkm::cont::CellSetExplicit<> cellSetExplicit = dcs.Cast<vtkm::cont::CellSetExplicit<> >();
+    vtkm::Vec< vtkm::Id, 3> forceBuildIndices;
+    cellSetExplicit.GetIndices(0, forceBuildIndices);
+    ShapesPortal = cellSetExplicit.GetShapesArray(vtkm::TopologyElementTagPoint(), vtkm::TopologyElementTagCell()).GetPortalConstControl();
+//    const vtkm::cont::Field *scalarField;
+
+    vtkm::cont::DynamicArrayHandleCoordinateSystem coords = csg.GetCoordinateSystem().GetData();
+    vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::Float32,3>> points;
+    coords.CopyTo(points);
+
+   vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::Float32,3>>::PortalControl wtf = points.GetPortalControl();
+    int vtx_idx = child_vtx[0];
+    int c_idx = child_idx[0];
+    int cnt = child_cnt[0];
+    vtkm::Vec<vtkm::Float32,3> lower, upper;
+    vtkm::Id cur_offset = coords.GetNumberOfValues();
+
+    for (int i=0; i<cnt; i++){
+        //cur_offset  = OffsetsPortal.Get(vtx_idx);
+        lower = wtf.Get(vtx_idx);
+        upper = wtf.Get(vtx_idx + 1);
+
+        if (upper[0] < pt[0] &&
+                upper[1] < pt[1] &&
+                upper[2] < pt[2] &&
+                pt[0] > lower[0] &&
+                pt[1] > lower[1] &&
+                pt[2] > lower[2]){
+        }
+
+    }
+  }
+
   void raycast()
   {
     std::shared_ptr<profugus::Core > sp_geo_core = this->d_geometry;
     profugus::Core::Array_t ot = sp_geo_core->array();
     def::Space_Vector corner = ot.corner();
 #if 1
-    quick_stop = 0;
-    tot_len = total_length(ot);
     cell_cnt = 0;
+quick_stop = 0;
+        child_idx.push_back(0);
+        dataSetBuilder.AddCell(vtkm::CELL_SHAPE_HEXAHEDRON);
+        dataSetBuilder.AddPoint(corner[0], corner[1], corner[2]);
+        dataSetBuilder.AddPoint(corner[0] + ot.pitch(def::I), corner[1] + ot.pitch(def::J), corner[2] + ot.height());
+        dataSetBuilder.AddPoint(corner[0] + ot.pitch(def::I), corner[1] + ot.pitch(def::J), corner[2] + ot.height());
+        dataSetBuilder.AddPoint(corner[0] + ot.pitch(def::I), corner[1] + ot.pitch(def::J), corner[2] + ot.height());
+        dataSetBuilder.AddPoint(corner[0] + ot.pitch(def::I), corner[1] + ot.pitch(def::J), corner[2] + ot.height());
+        dataSetBuilder.AddPoint(corner[0] + ot.pitch(def::I), corner[1] + ot.pitch(def::J), corner[2] + ot.height());
+
+        child_vtx.push_back(cell_cnt);
+        dataSetBuilder.AddCellPoint(cell_cnt++);
+        dataSetBuilder.AddCellPoint(cell_cnt++);
+        dataSetBuilder.AddCellPoint(cell_cnt++);
+        dataSetBuilder.AddCellPoint(cell_cnt++);
+        dataSetBuilder.AddCellPoint(cell_cnt++);
+        dataSetBuilder.AddCellPoint(cell_cnt++);
+        radii.push_back(0.);
+        radii.push_back(0.);
+        radii.push_back(0.);
+        radii.push_back(0.);
+        radii.push_back(0.);
+        radii.push_back(0.);
+
+    tot_len = total_length(ot);
     cell_set_dispatch(ot,
                       corner,                      
-                      0);
-    vtkm::cont::DataSet csg = dataSetBuilder.Create();
+                      0,
+                      ot.size());
+    csg = dataSetBuilder.Create();
     dataSetFieldAdd.AddPointField(csg, "radius", radii);
 #else
 
@@ -282,8 +396,8 @@ public:
     pos[2] += pos[2] * 4.0;
     new_cam.SetPosition(pos);
 
-
-
+    vtkm::Vec<vtkm::Float32,3> wtf(2,2,2);
+    test_flat(wtf);
     view = new vtkm::rendering::View3D(scene, mapper, canvas, new_cam, bg);
     new_cam.SetPosition(pos);
     view->SetCamera(new_cam);
@@ -320,9 +434,11 @@ private:
   vtkm::cont::DataSetBuilderExplicitIterative dataSetBuilder;
   vtkm::cont::DataSetFieldAdd dataSetFieldAdd;
   std::vector<vtkm::Float32> radii;
+  std::vector<vtkm::UInt32> child_idx, child_cnt, child_vtx;
   def::Space_Vector tot_len;
   int lastx, lasty, cell_cnt;
   vtkm::rendering::View3D *view;
+  vtkm::cont::DataSet csg;
 };
 
 }
