@@ -109,7 +109,7 @@ public:
             new_up[def::Z]);
         dataSetBuilder.AddPoint(0,0,0);
         dataSetBuilder.AddCell(vtkm::CELL_SHAPE_TRIANGLE);
-        child_idx.push_back(cell_cnt);
+        child_vtx.push_back(cell_cnt);
         dataSetBuilder.AddCellPoint(cell_cnt++);
         dataSetBuilder.AddCellPoint(cell_cnt++);
         dataSetBuilder.AddCellPoint(cell_cnt++);
@@ -129,7 +129,7 @@ public:
       dataSetBuilder.AddPoint(upper[0], upper[1], upper[2]);
 
       dataSetBuilder.AddCell(vtkm::CELL_SHAPE_LINE);
-      child_idx.push_back(cell_cnt);
+      child_vtx.push_back(cell_cnt);
       dataSetBuilder.AddCellPoint(cell_cnt++);
       radii.push_back(0.);
       dataSetBuilder.AddCellPoint(cell_cnt++);
@@ -140,6 +140,47 @@ public:
 //      quick_stop = 1;
     }
   }
+
+  template<class T>
+  void add(const profugus::RTK_Array<T> &ot,
+           const def::Space_Vector &cur_corner,
+           vtkm::Int32 level,
+           vtkm::Int32 &new_offset
+           ){
+    child_cnt.push_back( ot.size());
+    new_offset += ot.size();
+    child_idx.push_back(new_offset);
+
+    child_vtx.push_back(cell_cnt);
+    dataSetBuilder.AddCell(vtkm::CELL_SHAPE_HEXAHEDRON);
+    dataSetBuilder.AddPoint(cur_corner[0], cur_corner[1], cur_corner[2]);
+    dataSetBuilder.AddPoint(cur_corner[0] + ot.pitch(def::I), cur_corner[1] + ot.pitch(def::J), cur_corner[2] + ot.height());
+    dataSetBuilder.AddPoint(cur_corner[0] + ot.pitch(def::I), cur_corner[1] + ot.pitch(def::J), cur_corner[2] + ot.height());
+    dataSetBuilder.AddPoint(cur_corner[0] + ot.pitch(def::I), cur_corner[1] + ot.pitch(def::J), cur_corner[2] + ot.height());
+    dataSetBuilder.AddPoint(cur_corner[0] + ot.pitch(def::I), cur_corner[1] + ot.pitch(def::J), cur_corner[2] + ot.height());
+    dataSetBuilder.AddPoint(cur_corner[0] + ot.pitch(def::I), cur_corner[1] + ot.pitch(def::J), cur_corner[2] + ot.height());
+
+    dataSetBuilder.AddCellPoint(cell_cnt++);
+    dataSetBuilder.AddCellPoint(cell_cnt++);
+    dataSetBuilder.AddCellPoint(cell_cnt++);
+    dataSetBuilder.AddCellPoint(cell_cnt++);
+    dataSetBuilder.AddCellPoint(cell_cnt++);
+    dataSetBuilder.AddCellPoint(cell_cnt++);
+    radii.push_back(0.);
+    radii.push_back(0.);
+    radii.push_back(0.);
+    radii.push_back(0.);
+    radii.push_back(0.);
+    radii.push_back(0.);
+  }
+
+  void add(const profugus::RTK_Cell &ot,
+           const def::Space_Vector &cur_corner,
+           vtkm::Int32 level,
+           vtkm::Int32 &new_offset
+           ){
+  }
+
   template<class T>
   void cell_set_dispatch(const profugus::RTK_Array<T> &ot,
                          const def::Space_Vector &corner,
@@ -160,31 +201,7 @@ public:
       for (int i = 0; i < ot.size(def::I); ++i)
       {
           int n = ot.id(i, j, k);
-          child_cnt.push_back( ot.object(n).num_cells());
-          new_offset += ot.object(n).num_cells();
-          child_idx.push_back(new_offset);
-
-          child_vtx.push_back(cell_cnt);
-          dataSetBuilder.AddCell(vtkm::CELL_SHAPE_HEXAHEDRON);
-          dataSetBuilder.AddPoint(cur_corner[0], cur_corner[1], cur_corner[2]);
-          dataSetBuilder.AddPoint(cur_corner[0] + ot.object(n).pitch(def::I), cur_corner[1] + ot.object(n).pitch(def::J), cur_corner[2] + ot.object(n).height());
-          dataSetBuilder.AddPoint(cur_corner[0] + ot.object(n).pitch(def::I), cur_corner[1] + ot.object(n).pitch(def::J), cur_corner[2] + ot.object(n).height());
-          dataSetBuilder.AddPoint(cur_corner[0] + ot.object(n).pitch(def::I), cur_corner[1] + ot.object(n).pitch(def::J), cur_corner[2] + ot.object(n).height());
-          dataSetBuilder.AddPoint(cur_corner[0] + ot.object(n).pitch(def::I), cur_corner[1] + ot.object(n).pitch(def::J), cur_corner[2] + ot.object(n).height());
-          dataSetBuilder.AddPoint(cur_corner[0] + ot.object(n).pitch(def::I), cur_corner[1] + ot.object(n).pitch(def::J), cur_corner[2] + ot.object(n).height());
-
-          dataSetBuilder.AddCellPoint(cell_cnt++);
-          dataSetBuilder.AddCellPoint(cell_cnt++);
-          dataSetBuilder.AddCellPoint(cell_cnt++);
-          dataSetBuilder.AddCellPoint(cell_cnt++);
-          dataSetBuilder.AddCellPoint(cell_cnt++);
-          dataSetBuilder.AddCellPoint(cell_cnt++);
-          radii.push_back(0.);
-          radii.push_back(0.);
-          radii.push_back(0.);
-          radii.push_back(0.);
-          radii.push_back(0.);
-          radii.push_back(0.);
+          add(ot.object(n), cur_corner, level_cnt+1, new_offset);
 
           cur_corner[def::I] += ot.object(n).pitch(def::I);
         }
@@ -265,23 +282,28 @@ public:
     coords.CopyTo(points);
 
    vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::Float32,3>>::PortalControl wtf = points.GetPortalControl();
-    int vtx_idx = child_vtx[0];
-    int c_idx = child_idx[0];
-    int cnt = child_cnt[0];
+   int stack[64], stack_ptr;
+
+   int _idx = child_idx[0];
+    int _vtx = child_vtx[_idx];
+    int _cnt = child_cnt[0];
     vtkm::Vec<vtkm::Float32,3> lower, upper;
     vtkm::Id cur_offset = coords.GetNumberOfValues();
 
-    for (int i=0; i<cnt; i++){
+    stack_ptr = 0;
+    for (int i=0; i<_cnt; i++){
         //cur_offset  = OffsetsPortal.Get(vtx_idx);
-        lower = wtf.Get(vtx_idx);
-        upper = wtf.Get(vtx_idx + 1);
 
-        if (upper[0] < pt[0] &&
-                upper[1] < pt[1] &&
-                upper[2] < pt[2] &&
+        lower = wtf.Get(_vtx + i);
+        upper = wtf.Get(_vtx + i + 1);
+
+        if (upper[0] > pt[0] &&
+                upper[1] > pt[1] &&
+                upper[2] > pt[2] &&
                 pt[0] > lower[0] &&
                 pt[1] > lower[1] &&
                 pt[2] > lower[2]){
+          stack[stack_ptr++] = _vtx + i;
         }
 
     }
@@ -295,7 +317,8 @@ public:
 #if 1
     cell_cnt = 0;
 quick_stop = 0;
-        child_idx.push_back(0);
+        child_cnt.push_back(ot.size());
+        child_idx.push_back(1);
         dataSetBuilder.AddCell(vtkm::CELL_SHAPE_HEXAHEDRON);
         dataSetBuilder.AddPoint(corner[0], corner[1], corner[2]);
         dataSetBuilder.AddPoint(corner[0] + ot.pitch(def::I), corner[1] + ot.pitch(def::J), corner[2] + ot.height());
