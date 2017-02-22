@@ -282,33 +282,64 @@ public:
     coords.CopyTo(points);
 
    vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::Float32,3>>::PortalControl wtf = points.GetPortalControl();
-   int stack[64], stack_ptr;
-
-   int _idx = child_idx[0];
+   int stack[64], s_cnt[64], s_vtx[64], s_i[64], stack_ptr;
+    vtkm::Vec<vtkm::Float32,3> low[64], up[64];
+   int _idx = 0;//
+   int _cnt = child_cnt[_idx];
+   _idx= child_idx[_idx];
     int _vtx = child_vtx[_idx];
-    int _cnt = child_cnt[0];
     vtkm::Vec<vtkm::Float32,3> lower, upper;
     vtkm::Id cur_offset = coords.GetNumberOfValues();
 
     stack_ptr = 0;
-    for (int i=0; i<_cnt; i++){
-        //cur_offset  = OffsetsPortal.Get(vtx_idx);
+    stack[stack_ptr] = _idx;
+    s_cnt[stack_ptr] = _cnt;
+    s_vtx[stack_ptr++] = _vtx;
 
-        lower = wtf.Get(_vtx + i);
-        upper = wtf.Get(_vtx + i + 1);
+    while(stack_ptr > 0){
+        for (int i=0; i<_cnt; i++){
+            lower = wtf.Get(_vtx);
+            upper = wtf.Get( _vtx + 1);
 
-        if (upper[0] > pt[0] &&
-                upper[1] > pt[1] &&
-                upper[2] > pt[2] &&
-                pt[0] > lower[0] &&
-                pt[1] > lower[1] &&
-                pt[2] > lower[2]){
-          stack[stack_ptr++] = _vtx + i;
+            if (upper[0] > pt[0] &&
+                    upper[1] > pt[1] &&
+                    upper[2] > pt[2] &&
+                    pt[0] > lower[0] &&
+                    pt[1] > lower[1] &&
+                    pt[2] > lower[2]){
+                if(_cnt == 1){
+                    //reached a leaf
+                    _idx = stack[stack_ptr--];
+                    _vtx = s_vtx[stack_ptr];
+                    _cnt = s_cnt[stack_ptr];
+                    lower = low[stack_ptr];
+                    upper = up[stack_ptr];
+                    i = s_i[stack_ptr];
+                }
+                else{
+                    //push onto stack
+                    stack[stack_ptr] = _idx;
+                    s_cnt[stack_ptr] = _cnt;
+                    low[stack_ptr] = lower;
+                    s_vtx[stack_ptr] = _vtx;
+                    s_i[stack_ptr] = i;
+                    up[stack_ptr] = upper;
+
+
+                    _cnt = child_cnt[_idx];
+                    _idx = child_idx[_idx];
+                    _vtx = child_vtx[_idx];
+                    i = 0;
+                    stack_ptr++;
+                }
+            }
+            else{
+                //doesn't matter, do nothing
+            }
         }
-
     }
-  }
 
+}
   void raycast()
   {
     std::shared_ptr<profugus::Core > sp_geo_core = this->d_geometry;
