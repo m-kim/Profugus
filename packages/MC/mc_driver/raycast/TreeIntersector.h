@@ -103,13 +103,13 @@ void TreeIntersector::query(
      if (ret[0] > 0){
          if(type == vtkm::CELL_SHAPE_HEXAHEDRON){
              //push onto stack
-             stack[stack_ptr] = _idx;
+             stack[stack_ptr] = _idx + i;
              s_cnt[stack_ptr] = _cnt;
              s_i[stack_ptr] = i;
 
 
-             _cnt = treePtr->child_cnt[_idx];
-             _idx = treePtr->child_idx[_idx];
+             _cnt = treePtr->child_cnt[_idx + i];
+             _idx = treePtr->child_idx[_idx + i];
              _vtx = treePtr->child_vtx[_idx];
              i = 0;
              stack_ptr++;
