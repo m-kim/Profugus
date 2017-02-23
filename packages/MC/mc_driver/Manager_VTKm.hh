@@ -29,6 +29,8 @@
 #include <vtkm/cont/testing/MakeTestDataSet.h>
 #include <vtkm/rendering/CanvasRayTracer.h>
 #include "raycast/MapperRayTracer.h"
+#include "raycast/Tree.h"
+
 #include <vtkm/rendering/View3D.h>
 #include <vtkm/rendering/ColorTable.h>
 //#include <QRgb>
@@ -66,7 +68,9 @@ class Manager_VTKm<profugus::Core> : public Manager<profugus::Core>
 {
 public:
   Manager_VTKm()
-      : Manager<profugus::Core>()
+      : Manager<profugus::Core>(),
+        dataSetBuilder(new vtkm::cont::DataSetBuilderExplicitIterative()),
+        treePtr(new Tree(dataSetBuilder))
   {
     lastx = lasty = -1;
     view = nullptr;
@@ -80,159 +84,7 @@ public:
   }
 
 
-  void cell_set_dispatch(const profugus::RTK_Cell &ot,
-                         const def::Space_Vector &corner,
-                         int level,
-                         int offset)
-  {
-#ifdef DEBUG_VTKM
-    std::cout << corner[0] << " " << corner[1] << " " << corner[2] << " ";
-    std::cout << ot.pitch(0) << " " << ot.pitch(1) << " ";
-    std::cout << std::endl;
-#endif
-    if (ot.radii().size() > 0){
-//      if (!quick_stop){
-        def::Space_Vector lower, upper;
-        ot.get_extents(lower, upper);
-        def::Space_Vector new_low, new_up;
-        new_low[def::X] = new_up[def::X] = (corner[def::X] - lower[def::X]);
-        new_low[def::Y] = new_up[def::Y] = (corner[def::Y] - lower[def::Y]);
 
-        new_low[def::Z] = (corner[def::Z]);
-        new_up[def::Z] = (corner[def::Z] + ot.height());
-
-        dataSetBuilder.AddPoint(new_low[def::X],
-            new_low[def::Y],
-            new_low[def::Z]);
-        dataSetBuilder.AddPoint(new_up[def::X],
-            new_up[def::Y],
-            new_up[def::Z]);
-        dataSetBuilder.AddPoint(0,0,0);
-        dataSetBuilder.AddCell(vtkm::CELL_SHAPE_TRIANGLE);
-        child_vtx.push_back(vtx_cnt++);
-        dataSetBuilder.AddCellPoint(cell_cnt++);
-        dataSetBuilder.AddCellPoint(cell_cnt++);
-        dataSetBuilder.AddCellPoint(cell_cnt++);
-        radii.push_back(ot.radii()[0]);
-        radii.push_back(ot.radii()[0]);
-        radii.push_back(ot.radii()[0]);
-//        quick_stop = 1;
-//      }
-    }
-    else {
-      //box
-      def::Space_Vector lower, upper;
-      ot.get_extents(lower, upper);
-      upper = corner + upper - lower;
-      lower = corner;
-      dataSetBuilder.AddPoint(lower[0], lower[1], lower[2]);
-      dataSetBuilder.AddPoint(upper[0], upper[1], upper[2]);
-
-      dataSetBuilder.AddCell(vtkm::CELL_SHAPE_LINE);
-      child_vtx.push_back(vtx_cnt++);
-      dataSetBuilder.AddCellPoint(cell_cnt++);
-      radii.push_back(0.);
-      dataSetBuilder.AddCellPoint(cell_cnt++);
-      radii.push_back(0.);
-
-      //box
-
-//      quick_stop = 1;
-    }
-  }
-
-  template<class T>
-  void add(const profugus::RTK_Array<T> &ot,
-           const def::Space_Vector &cur_corner,
-           vtkm::Int32 level,
-           vtkm::Int32 &new_offset
-           ){
-    child_cnt.push_back( ot.size());
-    new_offset += ot.size();
-    child_idx.push_back(new_offset);
-
-    child_vtx.push_back(vtx_cnt++);
-    dataSetBuilder.AddCell(vtkm::CELL_SHAPE_HEXAHEDRON);
-    dataSetBuilder.AddPoint(cur_corner[0], cur_corner[1], cur_corner[2]);
-    dataSetBuilder.AddPoint(cur_corner[0] + ot.pitch(def::I), cur_corner[1] + ot.pitch(def::J), cur_corner[2] + ot.height());
-    dataSetBuilder.AddPoint(cur_corner[0] + ot.pitch(def::I), cur_corner[1] + ot.pitch(def::J), cur_corner[2] + ot.height());
-    dataSetBuilder.AddPoint(cur_corner[0] + ot.pitch(def::I), cur_corner[1] + ot.pitch(def::J), cur_corner[2] + ot.height());
-    dataSetBuilder.AddPoint(cur_corner[0] + ot.pitch(def::I), cur_corner[1] + ot.pitch(def::J), cur_corner[2] + ot.height());
-    dataSetBuilder.AddPoint(cur_corner[0] + ot.pitch(def::I), cur_corner[1] + ot.pitch(def::J), cur_corner[2] + ot.height());
-
-    dataSetBuilder.AddCellPoint(cell_cnt++);
-    dataSetBuilder.AddCellPoint(cell_cnt++);
-    dataSetBuilder.AddCellPoint(cell_cnt++);
-    dataSetBuilder.AddCellPoint(cell_cnt++);
-    dataSetBuilder.AddCellPoint(cell_cnt++);
-    dataSetBuilder.AddCellPoint(cell_cnt++);
-    radii.push_back(0.);
-    radii.push_back(0.);
-    radii.push_back(0.);
-    radii.push_back(0.);
-    radii.push_back(0.);
-    radii.push_back(0.);
-  }
-
-  void add(const profugus::RTK_Cell &ot,
-           const def::Space_Vector &cur_corner,
-           vtkm::Int32 level,
-           vtkm::Int32 &new_offset
-           ){
-  }
-
-  template<class T>
-  void cell_set_dispatch(const profugus::RTK_Array<T> &ot,
-                         const def::Space_Vector &corner,
-                         int level_cnt,
-                         int offset)
-{
-
-      //wish I could just copy d_Nc_offset
-  int new_offset = offset;
-  def::Space_Vector cur_corner = corner;
-
-  for (int k = 0; k < ot.size(def::K); ++k)
-  {
-    cur_corner[def::J] = corner[def::J];
-    for (int j = 0; j < ot.size(def::J); ++j)
-    {
-      cur_corner[def::I] = corner[def::I];
-      for (int i = 0; i < ot.size(def::I); ++i)
-      {
-          int n = ot.id(i, j, k);
-          add(ot.object(n), cur_corner, level_cnt+1, new_offset);
-
-          cur_corner[def::I] += ot.object(n).pitch(def::I);
-        }
-        int n =  ot.id(0,j,k);
-        cur_corner[def::J] += ot.object(n).pitch(def::J);
-    }
-  }
-  cur_corner = corner;
-    for (int k = 0; k < ot.size(def::K); ++k)
-    {
-      cur_corner[def::J] = corner[def::J];
-      for (int j = 0; j < ot.size(def::J); ++j)
-      {
-        cur_corner[def::I] = corner[def::I];
-        for (int i = 0; i < ot.size(def::I); ++i)
-        {
-
-          int n = ot.id(i, j, k);
-          cell_set_dispatch(ot.object(n),
-                            cur_corner,
-                            level_cnt+1,
-                            new_offset);
-          cur_corner[def::I] += ot.object(n).pitch(def::I);
-        }
-        int n =  ot.id(0,j,k);
-        cur_corner[def::J] += ot.object(n).pitch(def::J);
-      }
-
-    }
-    cur_corner[def::K] = corner[def::K];
-  }
 
   def::Space_Vector total_length(const profugus::Core::Array_t ot)
   {
@@ -288,7 +140,7 @@ public:
    int _idx = 0;//
    int _cnt = 1;//child_cnt[_idx];
    //_idx= child_idx[_idx];
-    int _vtx = child_vtx[_idx];
+    int _vtx = treePtr->child_vtx[_idx];
     vtkm::Vec<vtkm::Float32,3> lower, upper;
     //vtkm::Id cur_offset = coords.GetNumberOfValues();
 
@@ -297,7 +149,7 @@ public:
     s_cnt[stack_ptr] = _cnt;
     stack_ptr++;
     for (int i=0; i<_cnt;){
-      _vtx = child_vtx[_idx + i];
+      _vtx = treePtr->child_vtx[_idx + i];
       //lower = wtf.Get(_vtx);
       //upper = wtf.Get( _vtx + 1);
       vtkm::UInt8 type = ShapesPortal.Get(_vtx);
@@ -317,9 +169,9 @@ public:
               s_i[stack_ptr] = i;
 
 
-              _cnt = child_cnt[_idx];
-              _idx = child_idx[_idx];
-              _vtx = child_vtx[_idx];
+              _cnt = treePtr->child_cnt[_idx];
+              _idx = treePtr->child_idx[_idx];
+              _vtx = treePtr->child_vtx[_idx];
               i = 0;
               stack_ptr++;
           }
@@ -346,65 +198,38 @@ public:
     profugus::Core::Array_t ot = sp_geo_core->array();
     def::Space_Vector corner = ot.corner();
 #if 1
-    cell_cnt = vtx_cnt = 0;
-quick_stop = 0;
-        child_cnt.push_back(ot.size());
-        child_idx.push_back(1);
-        dataSetBuilder.AddCell(vtkm::CELL_SHAPE_HEXAHEDRON);
-        dataSetBuilder.AddPoint(corner[0], corner[1], corner[2]);
-        dataSetBuilder.AddPoint(corner[0] + ot.pitch(def::I), corner[1] + ot.pitch(def::J), corner[2] + ot.height());
-        dataSetBuilder.AddPoint(corner[0] + ot.pitch(def::I), corner[1] + ot.pitch(def::J), corner[2] + ot.height());
-        dataSetBuilder.AddPoint(corner[0] + ot.pitch(def::I), corner[1] + ot.pitch(def::J), corner[2] + ot.height());
-        dataSetBuilder.AddPoint(corner[0] + ot.pitch(def::I), corner[1] + ot.pitch(def::J), corner[2] + ot.height());
-        dataSetBuilder.AddPoint(corner[0] + ot.pitch(def::I), corner[1] + ot.pitch(def::J), corner[2] + ot.height());
 
-        child_vtx.push_back(vtx_cnt++);
-        dataSetBuilder.AddCellPoint(cell_cnt++);
-        dataSetBuilder.AddCellPoint(cell_cnt++);
-        dataSetBuilder.AddCellPoint(cell_cnt++);
-        dataSetBuilder.AddCellPoint(cell_cnt++);
-        dataSetBuilder.AddCellPoint(cell_cnt++);
-        dataSetBuilder.AddCellPoint(cell_cnt++);
-        radii.push_back(0.);
-        radii.push_back(0.);
-        radii.push_back(0.);
-        radii.push_back(0.);
-        radii.push_back(0.);
-        radii.push_back(0.);
-
-    tot_len = total_length(ot);
-    cell_set_dispatch(ot,
-                      corner,                      
-                      0,
-                      ot.size());
-    csg = dataSetBuilder.Create();
+    quick_stop = 0;
+    treePtr->build(ot, radii, corner);
+      csg = dataSetBuilder->Create();
     dataSetFieldAdd.AddPointField(csg, "radius", radii);
+
 #else
 
 
     //cylinder
-    dataSetBuilder.AddPoint(1, 0.25, 1);
-    dataSetBuilder.AddPoint(1, .75, 1);
+    dataSetBuilder->AddPoint(1, 0.25, 1);
+    dataSetBuilder->AddPoint(1, .75, 1);
 
     //box
-    dataSetBuilder.AddPoint(0.25, 0.25, 0.25);
-//    dataSetBuilder.AddPoint(0.75, .75, 0.75);
+    dataSetBuilder->AddPoint(0.25, 0.25, 0.25);
+//    dataSetBuilder->AddPoint(0.75, .75, 0.75);
 
 //    //sphere
-//    dataSetBuilder.AddPoint(1.5, 0.5, 1);
+//    dataSetBuilder->AddPoint(1.5, 0.5, 1);
 
-    dataSetBuilder.AddCell(vtkm::CELL_SHAPE_TRIANGLE);
-    dataSetBuilder.AddCellPoint(0);
-    dataSetBuilder.AddCellPoint(1);
-    dataSetBuilder.AddCellPoint(2);
+    dataSetBuilder->AddCell(vtkm::CELL_SHAPE_TRIANGLE);
+    dataSetBuilder->AddCellPoint(0);
+    dataSetBuilder->AddCellPoint(1);
+    dataSetBuilder->AddCellPoint(2);
     radii.push_back(0.2);
     radii.push_back(0.2);
 
 
-//    dataSetBuilder.AddCell(vtkm::CELL_SHAPE_VERTEX);
-//    dataSetBuilder.AddCellPoint(4);
+//    dataSetBuilder->AddCell(vtkm::CELL_SHAPE_VERTEX);
+//    dataSetBuilder->AddCellPoint(4);
 //    radii.push_back(0.1);
-    vtkm::cont::DataSet csg = dataSetBuilder.Create();
+    vtkm::cont::DataSet csg = dataSetBuilder->Create();
 
 
 //    //cylinder
@@ -431,7 +256,7 @@ quick_stop = 0;
 
     vtkm::rendering::Color bg(0.2f, 0.2f, 0.2f, 1.0f);
     vtkm::rendering::CanvasRayTracer canvas;
-    MapperRayTracer mapper(csg.GetCellSet());
+    MapperRayTracer mapper(csg.GetCellSet(), treePtr);
 
     vtkm::rendering::Scene scene;
     scene.AddActor(vtkm::rendering::Actor(csg.GetCellSet(),
@@ -485,14 +310,15 @@ quick_stop = 0;
   }
 private:
   bool quick_stop;
-  vtkm::cont::DataSetBuilderExplicitIterative dataSetBuilder;
+  std::shared_ptr<vtkm::cont::DataSetBuilderExplicitIterative> dataSetBuilder;
   vtkm::cont::DataSetFieldAdd dataSetFieldAdd;
   std::vector<vtkm::Float32> radii;
-  std::vector<vtkm::UInt32> child_idx, child_cnt, child_vtx;
   def::Space_Vector tot_len;
-  int lastx, lasty, cell_cnt, vtx_cnt;
+  int lastx, lasty;
   vtkm::rendering::View3D *view;
   vtkm::cont::DataSet csg;
+  std::shared_ptr<Tree> treePtr;
+
 };
 
 }

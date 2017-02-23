@@ -400,6 +400,8 @@ protected:
 
   const vtkm::cont::DynamicCellSet *Cells;
 
+  std::shared_ptr<Tree> treePtr;
+
   vtkm::cont::ArrayHandle< vtkm::Vec<vtkm::Id, 4> > Indices;
   vtkm::cont::ArrayHandle<vtkm::Float32> Scalars;
   vtkm::Id NumberOfTriangles;
@@ -433,7 +435,8 @@ public:
                const vtkm::Id &numberOfTriangles,
                const vtkm::Range &scalarRange,
                const vtkm::Bounds &dataBounds,
-               const vtkm::cont::DynamicCellSet &cells)
+               const vtkm::cont::DynamicCellSet &cells,
+               std::shared_ptr<Tree> tp)
   {
     IsSceneDirty = true;
     CoordsHandle = coordsHandle;
@@ -444,6 +447,8 @@ public:
     DataBounds = dataBounds;
 
     Cells = &cells;
+
+    treePtr = tp;
   }
 
   VTKM_CONT_EXPORT
@@ -469,7 +474,7 @@ public:
     }
 
     TriangleIntersector<DeviceAdapter> intersector;
-    intersector.run(Rays, Cells, CoordsHandle, ScalarField );
+    intersector.run(Rays, Cells, CoordsHandle, ScalarField, treePtr);
     Reflector<DeviceAdapter> reflector;
     reflector.run(Rays, CoordsHandle, ScalarField, ScalarRange);
     vtkm::worklet::DispatcherMapField< IntersectionPoint >( IntersectionPoint() )

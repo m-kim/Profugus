@@ -74,10 +74,12 @@ struct MapperRayTracer::InternalsType
   }
 };
 
-MapperRayTracer::MapperRayTracer(const vtkm::cont::DynamicCellSet &cells)
+MapperRayTracer::MapperRayTracer(const vtkm::cont::DynamicCellSet &cells,
+                                     std::shared_ptr<Tree> tp)
 
   : Internals(new InternalsType),
-    Cells(cells)
+    Cells(cells),
+    treePtr(tp)
 {  }
 
 MapperRayTracer::~MapperRayTracer()
@@ -111,6 +113,7 @@ struct MapperRayTracer::RenderFunctor
   vtkm::rendering::Camera Camera;
   vtkm::Range ScalarRange;
   vtkm::cont::DynamicCellSet Cells;
+  std::shared_ptr<Tree> treePtr;
 
   VTKM_CONT_EXPORT
   RenderFunctor(MapperRayTracer *self,
@@ -121,7 +124,8 @@ struct MapperRayTracer::RenderFunctor
 
                 const vtkm::cont::DynamicCellSet &cells,
                 const vtkm::rendering::Camera &camera,
-                const vtkm::Range &scalarRange)
+                const vtkm::Range &scalarRange,
+                std::shared_ptr<Tree> tp)
     : Self(self),
       TriangleIndices(indices),
       NumberOfTriangles(numberOfTriangles),
@@ -129,7 +133,8 @@ struct MapperRayTracer::RenderFunctor
       ScalarField(scalarField),
       Camera(camera),
       ScalarRange(scalarRange),
-      Cells(cells)
+      Cells(cells),
+      treePtr(tp)
   {  }
 
   template<typename Device>
@@ -151,7 +156,8 @@ struct MapperRayTracer::RenderFunctor
                     this->NumberOfTriangles,
                     this->ScalarRange,
                     dataBounds,
-                    this->Cells);
+                    this->Cells,
+                    this->treePtr);
     tracer->SetColorMap(this->Self->ColorMap);
     tracer->SetBackgroundColor(
           this->Self->Internals->Canvas->GetBackgroundColor().Components);
@@ -182,7 +188,8 @@ void MapperRayTracer::RenderCells(
 
                         this->Cells,
                         camera,
-                        scalarRange);
+                        scalarRange,
+                        treePtr);
   vtkm::cont::TryExecute(functor,
                          this->Internals->DeviceTracker,
                          VTKM_DEFAULT_DEVICE_ADAPTER_LIST_TAG());

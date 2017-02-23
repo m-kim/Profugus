@@ -29,6 +29,7 @@
 #include <vtkm/worklet/DispatcherMapField.h>
 #include <vtkm/worklet/WorkletMapField.h>
 #include <iostream>
+#include "TreeIntersector.h"
 
 namespace {
   const static vtkm::Int32 END_FLAG2 = -1000000000;
@@ -55,7 +56,7 @@ public:
 	const vtkm::cont::DynamicCellSet *Cells;
 	vtkm::cont::ArrayHandle<vtkm::UInt8>::PortalConstControl ShapesPortal;
 	vtkm::cont::ArrayHandle<vtkm::Id>::PortalConstControl OffsetsPortal;
-
+  std::shared_ptr<TreeIntersector> tIPtr;
     VTKM_EXEC_EXPORT
     vtkm::Float32 rcp(vtkm::Float32 f)  const { return 1.0f/f;}
     VTKM_EXEC_EXPORT
@@ -64,10 +65,11 @@ public:
     VTKM_CONT_EXPORT
     Intersector(bool occlusion,
                 vtkm::Float32 maxDistance,
-				const vtkm::cont::DynamicCellSet *cellset)
+        const vtkm::cont::DynamicCellSet *cellset,
+                std::shared_ptr<Tree> treePtr)
       : Occlusion(occlusion),
         MaxDistance(maxDistance),
-		Cells(cellset)
+    Cells(cellset)
     {
     vtkm::cont::CellSetExplicit<> cellSetExplicit = Cells->Cast<vtkm::cont::CellSetExplicit<> >();
 		ShapesPortal = cellSetExplicit.GetShapesArray(vtkm::TopologyElementTagPoint(), vtkm::TopologyElementTagCell()).GetPortalConstControl();
@@ -81,6 +83,7 @@ public:
 
 		OffsetsPortal = cellSetExplicit.GetIndexOffsetArray(vtkm::TopologyElementTagPoint(), vtkm::TopologyElementTagCell()).GetPortalConstControl();
 
+    tIPtr = std::shared_ptr<TreeIntersector>(new TreeIntersector(treePtr, ShapesPortal, OffsetsPortal));
 	}
     typedef void ControlSignature(FieldIn<>,
                                   FieldIn<>,
@@ -102,160 +105,8 @@ public:
 
 	typedef vtkm::Vec<vtkm::Float32, 3> vec3;
 
-	vec3 box(const vec3 &ray_start,
-		const vec3 &ray,
-		const vec3 &lb,
-		const vec3 &rt) const
-	{
-		vec3 rayfrac;
-		rayfrac[0] = 1.0 / ray[0];
-		rayfrac[1] = 1.0 / ray[1];
-		rayfrac[2] = 1.0 / ray[2];
-		float t1 = (lb[0] - ray_start[0])*rayfrac[0];
-		float t2 = (rt[0] - ray_start[0])*rayfrac[0];
-		float t3 = (lb[1] - ray_start[1])*rayfrac[1];
-		float t4 = (rt[1] - ray_start[1])*rayfrac[1];
-		float t5 = (lb[2] - ray_start[2])*rayfrac[2];
-		float t6 = (rt[2] - ray_start[2])*rayfrac[2];
 
-		int face = 0;
 
-		//float tmin = max(max(min(t1, t2), min(t3, t4)), min(t5, t6));
-		float tmin = 0;
-		if (t1 < t2) {
-			tmin = t1;
-			face = 0;
-		}
-		else {
-			tmin = t2;
-			face = 1;
-		}
-		if (t3 < t4) {
-			if (tmin < t3) {
-				tmin = t3;
-				face = 2;
-			}
-		}
-		else {
-			if (tmin < t4) {
-				tmin = t4;
-				face = 3;
-			}
-
-		}
-		if (t5 < t6) {
-			if (tmin < t5) {
-				tmin = t5;
-				face = 4;
-			}
-		}
-		else {
-			if (tmin < t6) {
-				tmin = t6;
-				face = 5;
-			}
-
-		}
-		float tmax = vtkm::Min(vtkm::Min(vtkm::Max(t1, t2), vtkm::Max(t3, t4)), vtkm::Max(t5, t6));
-
-		// if tmax < 0, ray (line) is intersecting AABB, but whole AABB is behing us
-		if (tmax < 0)
-		{
-			return vec3(0, tmax, 0);
-		}
-
-		// if tmin > tmax, ray doesn't intersect AABB
-		if (tmin > tmax)
-		{
-			return vec3(0, tmax, 0);
-		}
-
-		return vec3(1, tmin, face);
-	}
-vec3 cylinder(const vec3 &ray_start,
-		const vec3 &ray_direction,
-		const vec3 &p,
-		const vec3 &q,
-		float r) const
-	{
-		float t = 0;
-    vec3 ray_end = ray_start + ray_direction * 1000;
-		vec3 d = q - p;
-		vec3 m = ray_start - p;
-    vec3 n = ray_end - ray_start;
-		float md = dot(m, d);
-    float nd = dot(n, d);
-		float dd = dot(d, d);
-		if ((md < 0.0f) && (md + nd < 0.0f)) return vec3(0, 0, 0); //segment outside 'p' side of cylinder
-		if ((md > dd) && (md + nd  > dd))  return vec3(0, 0, 0); //segment outside 'q' side of cylinder
-    float nn = dot(n, n);
-    float mn = dot(m, n);
-		float a = dd * nn - nd *nd;
-		float k = dot(m, m) - r * r;
-		float c = dd * k - md * md;
-
-    if (fabs(a) < 1e-6) {
-			if (c > 0.0) //'a' and thus the segment lie outside cylinder
-				return vec3(0, 0, 0);
-			if (md < 0.0f) //intesect segment against 'p' endcap 
-				t = -mn / nn;
-			else if (md > dd) //intersect segment against 'q' endcap
-t = (nd - mn) / nn;
-			else //else 'a' lies inside cylinder 
-				t = 0;
-
-				return vec3(1, 2, 0);
-		}
-		float b = dd * mn - nd * md;
-		float discr = b * b - a * c;
-		if (discr < 0.0f) //no roots 
-			return vec3(0, 0, 0);
-		t = (-b - sqrt(discr)) / a;
-		if (md + t * nd < 0.0f) {
-			//intersect outside cylinder on 'p' side
-			if (nd <= 0.0f) return vec3(0.0, 0.0, 0);
-			t = -md / nd;
-			return vec3(k + 2 * t * (mn + t *nn) <= 0.0f, t, 0);
-		}
-		else if (md + t * nd > dd) {
-			//intersect outside cylinder on 'q' side
-			if (nd >= 0.0f) return vec3(0, 0, 0);
-			t = (dd - md) / nd;
-
-			return vec3(k + dd - 2 * md + t * (2 * (mn - nd) + t * nn) <= 0.0f, t, 0);
-		}
-
-		return vec3(1, t, 0);
-
-	}
-
-	vec3 sphere(const vec3 &ray_start,
-		const vec3 &ray_direction,
-		const vec3 &center,
-		float r) const
-	{
-		vec3 p = ray_start - center;
-
-		float b = dot(p, ray_direction);
-		float c = dot(p, p) - r * r;
-
-		if (c > 0 && b > 0) {
-			return vec3(0, 0, 0);
-		}
-
-		float discr = b * b - c;
-
-		if (discr < 0.0) {
-			return vec3(0, 0, 0);
-		}
-
-		float t = -b - sqrt(discr);
-
-		if (t < 0)
-			return vec3(0, 0, 0);
-
-		return vec3(1.0, t, 0);
-	}
 	template<typename PointPortalType, typename ScalarPortalType>
 	VTKM_EXEC_EXPORT
 		void operator()(const vtkm::Vec<vtkm::Float32, 3> &rayDir,
@@ -294,17 +145,16 @@ t = (nd - mn) / nn;
 
 
 		vec3 ret;
-		vec3 cyl_top, cyl_bottom;
-		vec3 center;
-		vtkm::Float32 cyl_radius;
-		vec3 box_ll, box_ur;
-
+    vec3 cyl_top, cyl_bottom;
+    vec3 center;
+    vtkm::Float32 cyl_radius;
+    vec3 box_ll, box_ur;
 		vtkm::UInt8 fin_type = 0;
     vtkm::UInt8 face = 0;
 		vtkm::Id fin_offset = 0;
 		vec3 fin_center;
 
-		for (int i = 0; i< ShapesPortal.GetNumberOfValues(); i++) {
+    for (int i = 0; i< ShapesPortal.GetNumberOfValues(); i++) {
 			vtkm::UInt8 type = ShapesPortal.Get(i);
 			vtkm::Id cur_offset = OffsetsPortal.Get(i);
 			switch (type) {
@@ -314,7 +164,7 @@ t = (nd - mn) / nn;
         cyl_top = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset + 1));
         cyl_radius = vtkm::Float32(scalars.Get(cur_offset));
         //ret = vtkm::Vec<vtkm::Float32, 3>(1,1,1);
-        ret = cylinder(rayOrigin, rayDir, cyl_bottom, cyl_top, cyl_radius);
+        ret = TreeIntersector::cylinder(rayOrigin, rayDir, cyl_bottom, cyl_top, cyl_radius);
         if (ret[0] > 0) {
           if (ret[1] < minDistance) {
             minDistance = ret[1];
@@ -329,7 +179,7 @@ t = (nd - mn) / nn;
 			case vtkm::CELL_SHAPE_LINE:
 				box_ll = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset));
 				box_ur = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset+1));
-				ret = box(rayOrigin, rayDir, box_ll, box_ur);
+        ret = TreeIntersector::box(rayOrigin, rayDir, box_ll, box_ur);
 				if (ret[0] > 0) {
 					if (ret[1] < minDistance) {
 						minDistance = ret[1];
@@ -343,7 +193,7 @@ t = (nd - mn) / nn;
 			
       case vtkm::CELL_SHAPE_VERTEX:
         center = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset));//1.5;
-        ret = sphere(rayOrigin, rayDir, center, vtkm::Float32(scalars.Get(cur_offset)));
+        ret = TreeIntersector::sphere(rayOrigin, rayDir, center, vtkm::Float32(scalars.Get(cur_offset)));
         if (ret[0] > 0) {
           if (ret[1] < minDistance) {
             minDistance = ret[1];
@@ -359,7 +209,15 @@ t = (nd - mn) / nn;
 		}
 
 
-	   if (minDistance < MaxDistance) {
+    vtkm::UInt8 tree_fin_type = 0;
+    vtkm::UInt8 tree_face = 0;
+    vtkm::Id tree_fin_offset = 0, tree_hitIndex;
+    vec3 tree_fin_center;
+    vtkm::Float32 tree_minDistance;
+
+    tIPtr->query(points, scalars, rayOrigin, rayDir, tree_fin_type, tree_face,tree_fin_offset, tree_fin_center, tree_minDistance, tree_hitIndex);
+
+    if (minDistance < MaxDistance) {
        scalar_out = 1.0;
       vec3 pos = rayOrigin + rayDir * minDistance;
 			vec3 pt;
@@ -531,9 +389,10 @@ t = (nd - mn) / nn;
   void run(Ray<DeviceAdapter> &rays,
            const vtkm::cont::DynamicCellSet *cells,
            vtkm::cont::DynamicArrayHandleCoordinateSystem coordsHandle,
-           const vtkm::cont::Field *scalarField)
+           const vtkm::cont::Field *scalarField,
+           std::shared_ptr<Tree> tp)
   {
-    vtkm::worklet::DispatcherMapField< Intersector >( Intersector( false, 10000000.f, cells) )
+    vtkm::worklet::DispatcherMapField< Intersector >( Intersector( false, 10000000.f, cells, tp) )
       .Invoke( rays.Dir,
                rays.Origin,
                rays.Distance,

@@ -25,11 +25,12 @@
 #include <vtkm/rendering/Camera.h>
 
 #include <memory>
+#include "Tree.h"
 
 class MapperRayTracer : public vtkm::rendering::Mapper
 {
 public:
-  MapperRayTracer(const vtkm::cont::DynamicCellSet &cells);
+  MapperRayTracer(const vtkm::cont::DynamicCellSet &cells, std::shared_ptr<Tree> tp);
 
   ~MapperRayTracer();
 
@@ -53,7 +54,7 @@ private:
 
   struct RenderFunctor;
   vtkm::cont::DynamicCellSet Cells;
-
+  std::shared_ptr<Tree> treePtr;
 };
 
 #endif //MapperRayTracer_h
