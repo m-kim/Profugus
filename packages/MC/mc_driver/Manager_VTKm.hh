@@ -109,7 +109,7 @@ public:
             new_up[def::Z]);
         dataSetBuilder.AddPoint(0,0,0);
         dataSetBuilder.AddCell(vtkm::CELL_SHAPE_TRIANGLE);
-        child_vtx.push_back(cell_cnt);
+        child_vtx.push_back(vtx_cnt++);
         dataSetBuilder.AddCellPoint(cell_cnt++);
         dataSetBuilder.AddCellPoint(cell_cnt++);
         dataSetBuilder.AddCellPoint(cell_cnt++);
@@ -129,7 +129,7 @@ public:
       dataSetBuilder.AddPoint(upper[0], upper[1], upper[2]);
 
       dataSetBuilder.AddCell(vtkm::CELL_SHAPE_LINE);
-      child_vtx.push_back(cell_cnt);
+      child_vtx.push_back(vtx_cnt++);
       dataSetBuilder.AddCellPoint(cell_cnt++);
       radii.push_back(0.);
       dataSetBuilder.AddCellPoint(cell_cnt++);
@@ -151,7 +151,7 @@ public:
     new_offset += ot.size();
     child_idx.push_back(new_offset);
 
-    child_vtx.push_back(cell_cnt);
+    child_vtx.push_back(vtx_cnt++);
     dataSetBuilder.AddCell(vtkm::CELL_SHAPE_HEXAHEDRON);
     dataSetBuilder.AddPoint(cur_corner[0], cur_corner[1], cur_corner[2]);
     dataSetBuilder.AddPoint(cur_corner[0] + ot.pitch(def::I), cur_corner[1] + ot.pitch(def::J), cur_corner[2] + ot.height());
@@ -282,6 +282,8 @@ public:
     coords.CopyTo(points);
 
    vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::Float32,3>>::PortalControl wtf = points.GetPortalControl();
+   OffsetsPortal = cellSetExplicit.GetIndexOffsetArray(vtkm::TopologyElementTagPoint(), vtkm::TopologyElementTagCell()).GetPortalConstControl();
+
    int stack[64], s_cnt[64], s_i[64], stack_ptr;
    int _idx = 0;//
    int _cnt = 1;//child_cnt[_idx];
@@ -296,35 +298,38 @@ public:
     stack_ptr++;
     for (int i=0; i<_cnt;){
       _vtx = child_vtx[_idx + i];
-      lower = wtf.Get(_vtx);
-      upper = wtf.Get( _vtx + 1);
-
+      //lower = wtf.Get(_vtx);
+      //upper = wtf.Get( _vtx + 1);
+      vtkm::UInt8 type = ShapesPortal.Get(_vtx);
+      vtkm::Id cur_offset = OffsetsPortal.Get(_vtx);
+      lower = wtf.Get(cur_offset);
+      upper = wtf.Get(cur_offset+1);
       if (upper[0] > pt[0] &&
               upper[1] > pt[1] &&
               upper[2] > pt[2] &&
               pt[0] > lower[0] &&
               pt[1] > lower[1] &&
               pt[2] > lower[2]){
-          if(_idx != 0 &&_cnt == 1){
+          if(type == vtkm::CELL_SHAPE_HEXAHEDRON){
+              //push onto stack
+              stack[stack_ptr] = _idx;
+              s_cnt[stack_ptr] = _cnt;
+              s_i[stack_ptr] = i;
+
+
+              _cnt = child_cnt[_idx];
+              _idx = child_idx[_idx];
+              _vtx = child_vtx[_idx];
+              i = 0;
+              stack_ptr++;
+          }
+          else{
               //reached a leaf
             stack_ptr--;
             _idx = stack[stack_ptr];
             _cnt = s_cnt[stack_ptr];
             i = s_i[stack_ptr];
             i++;
-          }
-          else{
-            //push onto stack
-            stack[stack_ptr] = _idx;
-            s_cnt[stack_ptr] = _cnt;
-            s_i[stack_ptr] = i;
-
-
-            _cnt = child_cnt[_idx];
-            _idx = child_idx[_idx];
-            _vtx = child_vtx[_idx];
-            i = 0;
-            stack_ptr++;
           }
       }
       else{
@@ -341,7 +346,7 @@ public:
     profugus::Core::Array_t ot = sp_geo_core->array();
     def::Space_Vector corner = ot.corner();
 #if 1
-    cell_cnt = 0;
+    cell_cnt = vtx_cnt = 0;
 quick_stop = 0;
         child_cnt.push_back(ot.size());
         child_idx.push_back(1);
@@ -353,7 +358,7 @@ quick_stop = 0;
         dataSetBuilder.AddPoint(corner[0] + ot.pitch(def::I), corner[1] + ot.pitch(def::J), corner[2] + ot.height());
         dataSetBuilder.AddPoint(corner[0] + ot.pitch(def::I), corner[1] + ot.pitch(def::J), corner[2] + ot.height());
 
-        child_vtx.push_back(cell_cnt);
+        child_vtx.push_back(vtx_cnt++);
         dataSetBuilder.AddCellPoint(cell_cnt++);
         dataSetBuilder.AddCellPoint(cell_cnt++);
         dataSetBuilder.AddCellPoint(cell_cnt++);
@@ -485,7 +490,7 @@ private:
   std::vector<vtkm::Float32> radii;
   std::vector<vtkm::UInt32> child_idx, child_cnt, child_vtx;
   def::Space_Vector tot_len;
-  int lastx, lasty, cell_cnt;
+  int lastx, lasty, cell_cnt, vtx_cnt;
   vtkm::rendering::View3D *view;
   vtkm::cont::DataSet csg;
 };
