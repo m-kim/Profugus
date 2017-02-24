@@ -43,17 +43,17 @@ t = (nd - mn) / nn;
       //intersect outside cylinder on 'p' side
       if (nd <= 0.0f) return vec3(0.0, 0.0, 0);
       t = -md / nd;
-      return vec3(k + 2 * t * (mn + t *nn) <= 0.0f, t, 0);
+      return vec3(k + 2 * t * (mn + t *nn) <= 0.0f, t * 1000, 0);
     }
     else if (md + t * nd > dd) {
       //intersect outside cylinder on 'q' side
       if (nd >= 0.0f) return vec3(0, 0, 0);
       t = (dd - md) / nd;
 
-      return vec3(k + dd - 2 * md + t * (2 * (mn - nd) + t * nn) <= 0.0f, t, 0);
+      return vec3(k + dd - 2 * md + t * (2 * (mn - nd) + t * nn) <= 0.0f, t * 1000, 0);
     }
 
-    return vec3(1, t, 0);
+    return vec3(1, t * 1000, 0);
 
   }
 
