@@ -213,10 +213,15 @@ public:
     vtkm::UInt8 tree_face = 0;
     vtkm::Id tree_fin_offset = 0, tree_hitIndex;
     vec3 tree_fin_center;
-    vtkm::Float32 tree_minDistance;
+    vtkm::Float32 tree_minDistance = MaxDistance;
 
     tIPtr->query(points, scalars, rayOrigin, rayDir, tree_fin_type, tree_face,tree_fin_offset, tree_fin_center, tree_minDistance, tree_hitIndex);
 
+    if (fabs(minDistance - tree_minDistance) > 1e-6){
+      vec3 tmp = rayOrigin + rayDir * minDistance;
+      std::cout << "nope " << minDistance << " " << tree_minDistance << " ";
+      std::cout << tmp[0] << " " << tmp[1] << " " << tmp[2] << std::endl;
+    }
     if (minDistance < MaxDistance) {
        scalar_out = 1.0;
       vec3 pos = rayOrigin + rayDir * minDistance;

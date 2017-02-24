@@ -86,98 +86,104 @@ void TreeIntersector::query(
    int _vtx = treePtr->child_vtx[_idx];
    vtkm::Vec<vtkm::Float32,3> lower, upper;
    //vtkm::Id cur_offset = coords.GetNumberOfValues();
-
+    vec3 ret;
    stack_ptr = 0;
    stack[stack_ptr] = _idx;
    s_cnt[stack_ptr] = _cnt;
+   s_i[stack_ptr] = 0;
+
    stack_ptr++;
-   for (int i=0; i<_cnt;){
-     _vtx = treePtr->child_vtx[_idx + i];
-     //lower = wtf.Get(_vtx);
-     //upper = wtf.Get( _vtx + 1);
-     vtkm::UInt8 type = ShapesPortal.Get(_vtx);
-     vtkm::Id cur_offset = OffsetsPortal.Get(_vtx);
-     lower = points.Get(cur_offset);
-     upper = points.Get(cur_offset+1);
-     vec3 ret = box(rayOrigin, rayDir, lower, upper);
-     if (ret[0] > 0){
-         if(type == vtkm::CELL_SHAPE_HEXAHEDRON){
-             //push onto stack
-             stack[stack_ptr] = _idx + i;
-             s_cnt[stack_ptr] = _cnt;
-             s_i[stack_ptr] = i;
+   int i = 0;
+   while(stack_ptr > 0){
+     for(;i < _cnt;){
+       _vtx = treePtr->child_vtx[_idx + i];
+       //lower = wtf.Get(_vtx);
+       //upper = wtf.Get( _vtx + 1);
+       vtkm::UInt8 type = ShapesPortal.Get(_vtx);
+       vtkm::Id cur_offset = OffsetsPortal.Get(_vtx);
+       if(type == vtkm::CELL_SHAPE_HEXAHEDRON){
+         lower = points.Get(cur_offset);
+         upper = points.Get(cur_offset+1);
+         ret = box(rayOrigin, rayDir, lower, upper);
+         if (ret[0] > 0){
+           //push onto stack
+           stack[stack_ptr] = _idx;
+           s_cnt[stack_ptr] = _cnt;
+           s_i[stack_ptr] = i;
 
 
-             _cnt = treePtr->child_cnt[_idx + i];
-             _idx = treePtr->child_idx[_idx + i];
-             _vtx = treePtr->child_vtx[_idx];
-             i = 0;
-             stack_ptr++;
+           _cnt = treePtr->child_cnt[_idx + i];
+           _idx = treePtr->child_idx[_idx + i];
+           _vtx = treePtr->child_vtx[_idx];
+           i = 0;
+           stack_ptr++;
          }
          else{
-
-             //reached a leaf
-           switch(type){
-           case vtkm::CELL_SHAPE_TRIANGLE:
-             cyl_bottom = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset));
-             cyl_top = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset + 1));
-             cyl_radius = vtkm::Float32(scalars.Get(cur_offset));
-             //ret = vtkm::Vec<vtkm::Float32, 3>(1,1,1);
-             ret = cylinder(rayOrigin, rayDir, cyl_bottom, cyl_top, cyl_radius);
-             if (ret[0] > 0) {
-               if (ret[1] < minDistance) {
-                 minDistance = ret[1];
-                 hitIndex = 35;
-                 fin_type = type;
-                 fin_offset = cur_offset;
-               }
-             }
-             break;
-
-           case vtkm::CELL_SHAPE_LINE:
-             box_ll = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset));
-             box_ur = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset+1));
-             ret = box(rayOrigin, rayDir, box_ll, box_ur);
-             if (ret[0] > 0) {
-               if (ret[1] < minDistance) {
-                 minDistance = ret[1];
-                 hitIndex = 35;
-                 fin_type = type;
-                 fin_offset = cur_offset;
-                 face = ret[2];
-               }
-             }
-             break;
-
-           case vtkm::CELL_SHAPE_VERTEX:
-             center = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset));//1.5;
-             ret = sphere(rayOrigin, rayDir, center, vtkm::Float32(scalars.Get(cur_offset)));
-             if (ret[0] > 0) {
-               if (ret[1] < minDistance) {
-                 minDistance = ret[1];
-                 hitIndex = 35;
-                 fin_type = type;
-                 fin_offset = cur_offset;
-                 fin_center = center;
-               }
-             }
-             break;
-           }
-
-
-           stack_ptr--;
-           _idx = stack[stack_ptr];
-           _cnt = s_cnt[stack_ptr];
-           i = s_i[stack_ptr];
            i++;
          }
-     }
-     else{
-         //doesn't matter, do nothing
-       i++;
+       }
+       else{
 
+         //reached a leaf
+         switch(type){
+         case vtkm::CELL_SHAPE_TRIANGLE:
+           cyl_bottom = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset));
+           cyl_top = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset + 1));
+           cyl_radius = vtkm::Float32(scalars.Get(cur_offset));
+           //ret = vtkm::Vec<vtkm::Float32, 3>(1,1,1);
+           ret = cylinder(rayOrigin, rayDir, cyl_bottom, cyl_top, cyl_radius);
+           if (ret[0] > 0) {
+             if (ret[1] < minDistance) {
+               minDistance = ret[1];
+               hitIndex = 35;
+               fin_type = type;
+               fin_offset = cur_offset;
+             }
+           }
+           break;
+
+         case vtkm::CELL_SHAPE_LINE:
+           box_ll = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset));
+           box_ur = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset+1));
+           ret = box(rayOrigin, rayDir, box_ll, box_ur);
+           if (ret[0] > 0) {
+             if (ret[1] < minDistance) {
+               minDistance = ret[1];
+               hitIndex = 35;
+               fin_type = type;
+               fin_offset = cur_offset;
+               face = ret[2];
+             }
+           }
+           break;
+
+         case vtkm::CELL_SHAPE_VERTEX:
+           center = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset));//1.5;
+           ret = sphere(rayOrigin, rayDir, center, vtkm::Float32(scalars.Get(cur_offset)));
+           if (ret[0] > 0) {
+             if (ret[1] < minDistance) {
+               minDistance = ret[1];
+               hitIndex = 35;
+               fin_type = type;
+               fin_offset = cur_offset;
+               fin_center = center;
+             }
+           }
+           break;
+         }
+         i++;
+       }
+     }
+     if (i >= _cnt ){
+       stack_ptr--;
+       _idx = stack[stack_ptr];
+       _cnt = s_cnt[stack_ptr];
+       i = s_i[stack_ptr];
+       i++;
      }
    }
+
+
 }
 
 #endif
