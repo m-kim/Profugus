@@ -50,7 +50,7 @@ protected:
            const def::Space_Vector &cur_corner,
            vtkm::Int32 level,
            vtkm::Int32 &new_offset
-           ){}
+           );
 
   template<class T>
   void cell_set_dispatch(

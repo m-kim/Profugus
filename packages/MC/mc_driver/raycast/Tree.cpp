@@ -159,3 +159,16 @@ void Tree::build(
                     ot.size());
 }
 
+void Tree::add(
+         const profugus::RTK_Cell &ot,
+         std::vector<vtkm::Float32> &radii,
+         const def::Space_Vector &cur_corner,
+         vtkm::Int32 level,
+         vtkm::Int32 &new_offset
+         )
+{
+  child_cnt.push_back( 1 );
+  new_offset++;
+  child_idx.push_back(new_offset);
+
+}
