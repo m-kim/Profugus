@@ -9,7 +9,7 @@ public:
   enum CSG_TYPE{
     CYLINDER = vtkm::CELL_SHAPE_TRIANGLE,
     BOX = vtkm::CELL_SHAPE_LINE,
-    BOUND = vtkm::CELL_SHAPE_HEXAHEDRON,
+    BOUND = vtkm::CELL_SHAPE_TETRA,
     SPHERE = vtkm::CELL_SHAPE_VERTEX
   };
 
@@ -73,6 +73,7 @@ public:
             vec3 &fin_center,
             vtkm::Float32 &minDistance,
             vtkm::Id &hitIndex,
+          int _cnt,
       int _idx) const;
 protected:
   const vtkm::cont::ArrayHandle<vtkm::UInt8>::PortalConstControl ShapesPortal;
@@ -90,6 +91,7 @@ void TreeIntersector::recurse(
           vec3 &fin_center,
           vtkm::Float32 &minDistance,
           vtkm::Id &hitIndex,
+        int _cnt,
     int _idx) const
 {
   vec3 cyl_top, cyl_bottom;
@@ -98,10 +100,10 @@ void TreeIntersector::recurse(
   vec3 box_ll, box_ur;
   vtkm::Vec<vtkm::Float32,3> lower, upper;
   vec3 ret;
-  int _vtx = treePtr->child_vtx[_idx];
-  int _cnt = treePtr->child_cnt[_idx];
- for(int i = 0;i < _cnt; i++){
-   _vtx = treePtr->child_vtx[_idx + i];
+  _idx = treePtr->child_idx[_idx];
+
+  for(int i = 0;i < _cnt; i++){
+   int _vtx = treePtr->child_vtx[_idx + i];
    //lower = wtf.Get(_vtx);
    //upper = wtf.Get( _vtx + 1);
    vtkm::UInt8 type = ShapesPortal.Get(_vtx);
@@ -122,7 +124,8 @@ void TreeIntersector::recurse(
                 fin_center,
                 minDistance,
                 hitIndex,
-                treePtr->child_idx[_idx + i]);
+                treePtr->child_cnt[_idx+i],
+                _idx + i);
       }
     }
    else{
@@ -199,6 +202,15 @@ void TreeIntersector::query(
   int stack[64], s_cnt[64], s_i[64], stack_ptr;
   int _idx = 0;//
 
+  vtkm::Vec<vtkm::Float32, 3> lower, upper;
+  int _vtx = treePtr->child_vtx[_idx];
+  vtkm::UInt8 type = ShapesPortal.Get(_vtx);
+  vtkm::Id cur_offset = OffsetsPortal.Get(_vtx);
+  lower = points.Get(cur_offset);
+  upper = points.Get(cur_offset + 1);
+  vec3 ret = box(rayOrigin, rayDir, lower, upper);
+  if (ret[0] > 0){
+
    recurse(points,
            scalars,
            rayOrigin,
@@ -209,8 +221,9 @@ void TreeIntersector::query(
            fin_center,
            minDistance,
            hitIndex,
+           treePtr->child_cnt[_idx],
            _idx);
-
+  }
 //   vtkm::Vec<vtkm::Float32,3> lower, upper;
 //   //vtkm::Id cur_offset = coords.GetNumberOfValues();
 //    vec3 ret;

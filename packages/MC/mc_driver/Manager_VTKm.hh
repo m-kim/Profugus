@@ -121,7 +121,7 @@ public:
   {
     vtkm::cont::ArrayHandle<vtkm::UInt8>::PortalConstControl ShapesPortal;
     vtkm::cont::ArrayHandle<vtkm::Id>::PortalConstControl OffsetsPortal;
-    vtkm::cont::DynamicCellSet dcs = csg.GetCellSet();
+    vtkm::cont::DynamicCellSet dcs = treePtr->csg.GetCellSet();
 
     vtkm::cont::CellSetExplicit<> cellSetExplicit = dcs.Cast<vtkm::cont::CellSetExplicit<> >();
     vtkm::Vec< vtkm::Id, 3> forceBuildIndices;
@@ -129,7 +129,7 @@ public:
     ShapesPortal = cellSetExplicit.GetShapesArray(vtkm::TopologyElementTagPoint(), vtkm::TopologyElementTagCell()).GetPortalConstControl();
 //    const vtkm::cont::Field *scalarField;
 
-    vtkm::cont::DynamicArrayHandleCoordinateSystem coords = csg.GetCoordinateSystem().GetData();
+    vtkm::cont::DynamicArrayHandleCoordinateSystem coords = treePtr->csg.GetCoordinateSystem().GetData();
     vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::Float32,3>> points;
     coords.CopyTo(points);
 
@@ -162,7 +162,7 @@ public:
               pt[0] > lower[0] &&
               pt[1] > lower[1] &&
               pt[2] > lower[2]){
-          if(type == vtkm::CELL_SHAPE_HEXAHEDRON){
+          if(type == vtkm::CELL_SHAPE_TETRA){
               //push onto stack
               stack[stack_ptr] = _idx;
               s_cnt[stack_ptr] = _cnt;
@@ -201,8 +201,7 @@ public:
 
     quick_stop = 0;
     treePtr->build(ot, radii, corner);
-      csg = dataSetBuilder->Create();
-    dataSetFieldAdd.AddPointField(csg, "radius", radii);
+    dataSetFieldAdd.AddPointField(treePtr->csg, "radius", radii);
 
 #else
 
@@ -256,12 +255,12 @@ public:
 
     vtkm::rendering::Color bg(0.2f, 0.2f, 0.2f, 1.0f);
     vtkm::rendering::CanvasRayTracer canvas;
-    MapperRayTracer mapper(csg.GetCellSet(), treePtr);
+    MapperRayTracer mapper(treePtr->csg.GetCellSet(), treePtr);
 
     vtkm::rendering::Scene scene;
-    scene.AddActor(vtkm::rendering::Actor(csg.GetCellSet(),
-                                          csg.GetCoordinateSystem(),
-                                          csg.GetField("radius"),
+    scene.AddActor(vtkm::rendering::Actor(treePtr->csg.GetCellSet(),
+                                          treePtr->csg.GetCoordinateSystem(),
+                                          treePtr->csg.GetField("radius"),
                                           vtkm::rendering::ColorTable("thermal")));
 
     //Create vtkm rendering stuff.
@@ -275,6 +274,9 @@ public:
     pos[2] += pos[2] * 4.0;
     new_cam.SetPosition(pos);
 
+#if 0
+    treePtr->test(0);
+#else
     vtkm::Vec<vtkm::Float32,3> wtf(2,2,2);
     test_flat(wtf);
     view = new vtkm::rendering::View3D(scene, mapper, canvas, new_cam, bg);
@@ -285,7 +287,7 @@ public:
     //glutMainLoop();
     view->Paint();
     view->SaveAs("reg3D.pnm");
-
+#endif
   //QImage img(canvas.GetWidth(), canvas.GetHeight(), QImage::Format_RGB32);
   //typedef vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::Float32, 4> > ColorBufferType;
 
@@ -316,7 +318,6 @@ private:
   def::Space_Vector tot_len;
   int lastx, lasty;
   vtkm::rendering::View3D *view;
-  vtkm::cont::DataSet csg;
   std::shared_ptr<Tree> treePtr;
 
 };

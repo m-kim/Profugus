@@ -153,11 +153,11 @@ public:
     vtkm::UInt8 face = 0;
 		vtkm::Id fin_offset = 0;
 		vec3 fin_center;
-
+#if 0
     for (int i = 0; i< ShapesPortal.GetNumberOfValues(); i++) {
-			vtkm::UInt8 type = ShapesPortal.Get(i);
-			vtkm::Id cur_offset = OffsetsPortal.Get(i);
-			switch (type) {
+            vtkm::UInt8 type = ShapesPortal.Get(i);
+            vtkm::Id cur_offset = OffsetsPortal.Get(i);
+            switch (type) {
       case vtkm::CELL_SHAPE_TRIANGLE:
         scalar_out = 0.4;
         cyl_bottom = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset));
@@ -176,20 +176,20 @@ public:
         break;
 			
 
-			case vtkm::CELL_SHAPE_LINE:
-				box_ll = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset));
-				box_ur = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset+1));
+            case vtkm::CELL_SHAPE_LINE:
+                box_ll = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset));
+                box_ur = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset+1));
         ret = TreeIntersector::box(rayOrigin, rayDir, box_ll, box_ur);
-				if (ret[0] > 0) {
-					if (ret[1] < minDistance) {
-						minDistance = ret[1];
-						hitIndex = 35;
-						fin_type = type;
-						fin_offset = cur_offset;
+                if (ret[0] > 0) {
+                    if (ret[1] < minDistance) {
+                        minDistance = ret[1];
+                        hitIndex = 35;
+                        fin_type = type;
+                        fin_offset = cur_offset;
             face = ret[2];
           }
-				}
-				break;
+                }
+                break;
 			
       case vtkm::CELL_SHAPE_VERTEX:
         center = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset));//1.5;
@@ -206,22 +206,25 @@ public:
         break;
       }
 
-		}
+        }
 
+#else
+    tIPtr->query(points, scalars, rayOrigin, rayDir, fin_type, face,fin_offset, fin_center, minDistance, hitIndex);
+//    vtkm::UInt8 tree_fin_type = 0;
+//    vtkm::UInt8 tree_face = 0;
+//    vtkm::Id tree_fin_offset = 0, tree_hitIndex;
+//    vec3 tree_fin_center;
+//    vtkm::Float32 tree_minDistance = MaxDistance;
 
-    vtkm::UInt8 tree_fin_type = 0;
-    vtkm::UInt8 tree_face = 0;
-    vtkm::Id tree_fin_offset = 0, tree_hitIndex;
-    vec3 tree_fin_center;
-    vtkm::Float32 tree_minDistance = MaxDistance;
+//    tIPtr->query(points, scalars, rayOrigin, rayDir, tree_fin_type, tree_face,tree_fin_offset, tree_fin_center, tree_minDistance, tree_hitIndex);
 
-    tIPtr->query(points, scalars, rayOrigin, rayDir, tree_fin_type, tree_face,tree_fin_offset, tree_fin_center, tree_minDistance, tree_hitIndex);
+//    if (fabs(minDistance - tree_minDistance) > 1e-6){
+//      vec3 tmp = rayOrigin + rayDir * minDistance;
+//      std::cout << "nope " << minDistance << " " << tree_minDistance << " ";
+//      std::cout << tmp[0] << " " << tmp[1] << " " << tmp[2] << std::endl;
+//    }
+#endif
 
-    if (fabs(minDistance - tree_minDistance) > 1e-6){
-      vec3 tmp = rayOrigin + rayDir * minDistance;
-      std::cout << "nope " << minDistance << " " << tree_minDistance << " ";
-      std::cout << tmp[0] << " " << tmp[1] << " " << tmp[2] << std::endl;
-    }
     if (minDistance < MaxDistance) {
        scalar_out = 1.0;
       vec3 pos = rayOrigin + rayDir * minDistance;
