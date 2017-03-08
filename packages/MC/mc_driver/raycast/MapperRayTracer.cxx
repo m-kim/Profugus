@@ -178,7 +178,7 @@ void MapperRayTracer::RenderCells(
   vtkm::cont::ArrayHandle< vtkm::Vec<vtkm::Id, 4> >  indices;
   vtkm::Id numberOfTriangles;
   vtkm::rendering::internal::RunTriangulator(
-        cellset, indices, numberOfTriangles, this->Internals->DeviceTracker);
+        cellset, indices, numberOfTriangles);
 
   RenderFunctor functor(this,
                         indices,
@@ -190,9 +190,7 @@ void MapperRayTracer::RenderCells(
                         camera,
                         scalarRange,
                         treePtr);
-  vtkm::cont::TryExecute(functor,
-                         this->Internals->DeviceTracker,
-                         VTKM_DEFAULT_DEVICE_ADAPTER_LIST_TAG());
+  vtkm::cont::TryExecute(functor);
 }
 
 void MapperRayTracer::StartScene()
@@ -210,3 +208,8 @@ vtkm::rendering::Mapper *MapperRayTracer::NewCopy() const
   return new MapperRayTracer(*this);
 }
 
+vtkm::rendering::Canvas *
+MapperRayTracer::GetCanvas() const
+{
+  return this->Internals->Canvas;
+}

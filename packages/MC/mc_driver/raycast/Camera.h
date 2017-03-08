@@ -76,7 +76,7 @@ public:
                                     _3,
                                     _4,
                                     WorkIndex);
-    VTKM_EXEC_EXPORT
+    VTKM_EXEC
     void operator()(
         const vtkm::Vec<vtkm::Float32,4> &inColor,
         const vtkm::Float32 &inDepth,
@@ -158,7 +158,7 @@ public:
                                     _1,
                                     _2,
                                     _3);
-    VTKM_EXEC_EXPORT
+    VTKM_EXEC
     void operator()(vtkm::Id idx,
                     vtkm::Float32 &rayDirX,
                     vtkm::Float32 &rayDirY,

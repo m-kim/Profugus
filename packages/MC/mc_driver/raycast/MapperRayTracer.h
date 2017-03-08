@@ -48,6 +48,8 @@ public:
 
   Mapper *NewCopy() const VTKM_OVERRIDE;
 
+  virtual vtkm::rendering::Canvas* GetCanvas() const;
+
 private:
   struct InternalsType;
   std::shared_ptr<InternalsType> Internals;

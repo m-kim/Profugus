@@ -57,9 +57,9 @@ public:
 	vtkm::cont::ArrayHandle<vtkm::UInt8>::PortalConstControl ShapesPortal;
 	vtkm::cont::ArrayHandle<vtkm::Id>::PortalConstControl OffsetsPortal;
   std::shared_ptr<TreeIntersector> tIPtr;
-    VTKM_EXEC_EXPORT
+    VTKM_EXEC
     vtkm::Float32 rcp(vtkm::Float32 f)  const { return 1.0f/f;}
-    VTKM_EXEC_EXPORT
+    VTKM_EXEC
     vtkm::Float32 rcp_safe(vtkm::Float32 f) const { return rcp((fabs(f) < 1e-8f) ? 1e-8f : f); }
   public:
     VTKM_CONT_EXPORT
@@ -108,7 +108,7 @@ public:
 
 
 	template<typename PointPortalType, typename ScalarPortalType>
-	VTKM_EXEC_EXPORT
+    VTKM_EXEC
 		void operator()(const vtkm::Vec<vtkm::Float32, 3> &rayDir,
 			const vtkm::Vec<vtkm::Float32, 3> &rayOrigin,
 			vtkm::Float32 &distance,

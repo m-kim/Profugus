@@ -49,7 +49,7 @@ public:
                                   _5,
                                   _6,
                                   _7);
-  VTKM_EXEC_EXPORT
+  VTKM_EXEC
   void operator()(const vtkm::Id &hitIndex,
                   const vtkm::Float32 &distance,
                   const vtkm::Vec<vtkm::Float32,3> &rayDir,
@@ -97,7 +97,7 @@ public:
                                     _5,
                                     _6);
     template<typename PointPortalType>
-    VTKM_EXEC_EXPORT
+    VTKM_EXEC
     void operator()(const vtkm::Id &hitIndex,
                     const vtkm::Vec<vtkm::Float32,3> &rayDir,
                     vtkm::Float32 &normalX,
@@ -156,7 +156,7 @@ public:
                                     _4,
                                     _5);
     template<typename ScalarPortalType>
-    VTKM_EXEC_EXPORT
+    VTKM_EXEC
     void operator()(const vtkm::Id &hitIndex,
                     const vtkm::Float32 &u,
                     const vtkm::Float32 &v,
@@ -208,7 +208,7 @@ public:
                                     _2,
                                     _3);
     template<typename ScalarPortalType>
-    VTKM_EXEC_EXPORT
+    VTKM_EXEC
     void operator()(const vtkm::Id &hitIndex,
                     vtkm::Float32 &scalar,
                     const ScalarPortalType &scalars) const
@@ -323,7 +323,7 @@ public:
                                     _3,
                                     _4,
                                     _5);
-    VTKM_EXEC_EXPORT
+    VTKM_EXEC
     void operator()(const vtkm::Id &hitIdx,
                     const vtkm::Float32 &scalar,
                     const vtkm::Vec<vtkm::Float32,3> &normal,
