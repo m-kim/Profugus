@@ -21,7 +21,7 @@
 #include "MapperRayTracer.h"
 
 #include <vtkm/cont/TryExecute.h>
-#include <vtkm/cont/internal/RuntimeDeviceTracker.h>
+
 #include <vtkm/cont/internal/SimplePolymorphicContainer.h>
 
 #include <vtkm/rendering/CanvasRayTracer.h>
@@ -33,7 +33,6 @@
 struct MapperRayTracer::InternalsType
 {
   vtkm::rendering::CanvasRayTracer *Canvas;
-  vtkm::cont::internal::RuntimeDeviceTracker DeviceTracker;
   std::shared_ptr<vtkm::cont::internal::SimplePolymorphicContainerBase>
       RayTracerContainer;
 
@@ -92,7 +91,7 @@ void MapperRayTracer::SetCanvas(vtkm::rendering::Canvas *canvas)
     this->Internals->Canvas = dynamic_cast<vtkm::rendering::CanvasRayTracer*>(canvas);
     if(this->Internals->Canvas == nullptr)
     {
-      throw vtkm::cont::ErrorControlBadValue(
+      throw vtkm::cont::ErrorBadType(
         "Ray Tracer: bad canvas type. Must be CanvasRayTracer");
     }
   }
