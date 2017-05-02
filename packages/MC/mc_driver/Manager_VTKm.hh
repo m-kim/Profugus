@@ -30,6 +30,7 @@
 #include <vtkm/rendering/CanvasRayTracer.h>
 #include "raycast/MapperRayTracer.h"
 #include "raycast/Tree.h"
+#include "raycast/TreeBuilder.h"
 
 #include <vtkm/rendering/View3D.h>
 #include <vtkm/rendering/ColorTable.h>
@@ -121,7 +122,7 @@ public:
   {
     vtkm::cont::ArrayHandle<vtkm::UInt8>::PortalConstControl ShapesPortal;
     vtkm::cont::ArrayHandle<vtkm::Id>::PortalConstControl OffsetsPortal;
-    vtkm::cont::DynamicCellSet dcs = treePtr->csg.GetCellSet();
+    vtkm::cont::DynamicCellSet dcs = treePtr->getCSG().GetCellSet();
 
     vtkm::cont::CellSetExplicit<> cellSetExplicit = dcs.Cast<vtkm::cont::CellSetExplicit<> >();
     vtkm::Vec< vtkm::Id, 3> forceBuildIndices;
@@ -129,7 +130,7 @@ public:
     ShapesPortal = cellSetExplicit.GetShapesArray(vtkm::TopologyElementTagPoint(), vtkm::TopologyElementTagCell()).GetPortalConstControl();
 //    const vtkm::cont::Field *scalarField;
 
-    vtkm::cont::DynamicArrayHandleCoordinateSystem coords = treePtr->csg.GetCoordinateSystem().GetData();
+    vtkm::cont::DynamicArrayHandleCoordinateSystem coords = treePtr->getCSG().GetCoordinateSystem().GetData();
     vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::Float32,3>> points;
     coords.CopyTo(points);
 
@@ -140,7 +141,7 @@ public:
    int _idx = 0;//
    int _cnt = 1;//child_cnt[_idx];
    //_idx= child_idx[_idx];
-    int _vtx = treePtr->child_vtx[_idx];
+    int _vtx = treePtr->getVtx(_idx);//child_vtx[_idx];
     vtkm::Vec<vtkm::Float32,3> lower, upper;
     //vtkm::Id cur_offset = coords.GetNumberOfValues();
 
@@ -149,7 +150,7 @@ public:
     s_cnt[stack_ptr] = _cnt;
     stack_ptr++;
     for (int i=0; i<_cnt;){
-      _vtx = treePtr->child_vtx[_idx + i];
+      _vtx = treePtr->getVtx(_idx + i);//child_vtx[_idx + i];
       //lower = wtf.Get(_vtx);
       //upper = wtf.Get( _vtx + 1);
       vtkm::UInt8 type = ShapesPortal.Get(_vtx);
@@ -169,9 +170,9 @@ public:
               s_i[stack_ptr] = i;
 
 
-              _cnt = treePtr->child_cnt[_idx];
-              _idx = treePtr->child_idx[_idx];
-              _vtx = treePtr->child_vtx[_idx];
+              _cnt = treePtr->getCnt(_idx);//child_cnt[_idx];
+              _idx = treePtr->getIdx(_idx);//child_idx[_idx];
+              _vtx = treePtr->getVtx(_idx);//child_vtx[_idx];
               i = 0;
               stack_ptr++;
           }
@@ -200,8 +201,9 @@ public:
 #if 1
 
     quick_stop = 0;
-    treePtr->build(ot, radii, corner);
-    dataSetFieldAdd.AddPointField(treePtr->csg, "radius", radii);
+    //treePtr->build(ot, radii, corner);
+    tb = std::shared_ptr<TreeBuilder>(new TreeBuilder(treePtr, ot, radii, corner));
+    dataSetFieldAdd.AddPointField(treePtr->getCSG(), "radius", radii);
 
 #else
 
@@ -255,12 +257,12 @@ public:
 
     vtkm::rendering::Color bg(0.2f, 0.2f, 0.2f, 1.0f);
     vtkm::rendering::CanvasRayTracer canvas;
-    MapperRayTracer mapper(treePtr->csg.GetCellSet(), treePtr);
+    MapperRayTracer mapper(treePtr->getCSG().GetCellSet(), treePtr);
 
     vtkm::rendering::Scene scene;
-    scene.AddActor(vtkm::rendering::Actor(treePtr->csg.GetCellSet(),
-                                          treePtr->csg.GetCoordinateSystem(),
-                                          treePtr->csg.GetField("radius"),
+    scene.AddActor(vtkm::rendering::Actor(treePtr->getCSG().GetCellSet(),
+                                          treePtr->getCSG().GetCoordinateSystem(),
+                                          treePtr->getCSG().GetField("radius"),
                                           vtkm::rendering::ColorTable("thermal")));
 
     //Create vtkm rendering stuff.
@@ -319,6 +321,7 @@ private:
   int lastx, lasty;
   vtkm::rendering::View3D *view;
   std::shared_ptr<Tree> treePtr;
+  std::shared_ptr<TreeBuilder> tb;
 
 };
 

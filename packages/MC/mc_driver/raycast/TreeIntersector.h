@@ -203,7 +203,7 @@ void TreeIntersector::query(
   int _idx = 0;//
 
   vtkm::Vec<vtkm::Float32, 3> lower, upper;
-  int _vtx = treePtr->child_vtx[_idx];
+  int _vtx = treePtr->getVtx(_idx);//child_vtx[_idx];
   vtkm::UInt8 type = ShapesPortal.Get(_vtx);
   vtkm::Id cur_offset = OffsetsPortal.Get(_vtx);
   lower = points.Get(cur_offset);
@@ -230,15 +230,15 @@ void TreeIntersector::query(
         int _cnt = 0;
        stack_ptr = 0;
        stack[stack_ptr] = _idx;
-       _cnt = s_cnt[stack_ptr] = treePtr->child_cnt[_idx];
+       _cnt = s_cnt[stack_ptr] = treePtr->getCnt(_idx);//child_cnt[_idx];
        s_i[stack_ptr] = 0;
-       _idx = treePtr->child_idx[_idx];
+       _idx = treePtr->getIdx(_idx);//child_idx[_idx];
 
        stack_ptr++;
        int i = 0;
        do{
          for(;i < _cnt;){
-           _vtx = treePtr->child_vtx[_idx + i];
+           _vtx = treePtr->getVtx(_idx+i);//child_vtx[_idx + i];
            //lower = wtf.Get(_vtx);
            //upper = wtf.Get( _vtx + 1);
            vtkm::UInt8 type = ShapesPortal.Get(_vtx);
@@ -254,8 +254,8 @@ void TreeIntersector::query(
                s_i[stack_ptr] = i;
 
 
-               _cnt = treePtr->child_cnt[_idx + i];
-               _idx = treePtr->child_idx[_idx + i];
+               _cnt = treePtr->getCnt(_idx+i);//child_cnt[_idx + i];
+               _idx = treePtr->getIdx(_idx+i);//child_idx[_idx + i];
                i = 0;
                stack_ptr++;
              }
