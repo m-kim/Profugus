@@ -74,7 +74,7 @@ struct MapperRayTracer::InternalsType
 };
 
 MapperRayTracer::MapperRayTracer(const vtkm::cont::DynamicCellSet &cells,
-                                     std::shared_ptr<Tree> tp)
+                                     std::shared_ptr<Tree<VTKM_DEFAULT_DEVICE_ADAPTER_TAG>> tp)
 
   : Internals(new InternalsType),
     Cells(cells),
@@ -112,7 +112,7 @@ struct MapperRayTracer::RenderFunctor
   vtkm::rendering::Camera Camera;
   vtkm::Range ScalarRange;
   vtkm::cont::DynamicCellSet Cells;
-  std::shared_ptr<Tree> treePtr;
+  std::shared_ptr<Tree<VTKM_DEFAULT_DEVICE_ADAPTER_TAG>> treePtr;
 
   VTKM_CONT_EXPORT
   RenderFunctor(MapperRayTracer *self,
@@ -124,7 +124,7 @@ struct MapperRayTracer::RenderFunctor
                 const vtkm::cont::DynamicCellSet &cells,
                 const vtkm::rendering::Camera &camera,
                 const vtkm::Range &scalarRange,
-                std::shared_ptr<Tree> tp)
+                std::shared_ptr<Tree<VTKM_DEFAULT_DEVICE_ADAPTER_TAG>> tp)
     : Self(self),
       TriangleIndices(indices),
       NumberOfTriangles(numberOfTriangles),

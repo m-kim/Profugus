@@ -53,10 +53,10 @@ public:
 
     bool Occlusion;
     vtkm::Float32 MaxDistance;
-	const vtkm::cont::DynamicCellSet *Cells;
-	vtkm::cont::ArrayHandle<vtkm::UInt8>::PortalConstControl ShapesPortal;
-	vtkm::cont::ArrayHandle<vtkm::Id>::PortalConstControl OffsetsPortal;
-  std::shared_ptr<TreeIntersector> tIPtr;
+    const vtkm::cont::DynamicCellSet *Cells;
+    vtkm::cont::ArrayHandle<vtkm::UInt8>::PortalConstControl ShapesPortal;
+    vtkm::cont::ArrayHandle<vtkm::Id>::PortalConstControl OffsetsPortal;
+  std::shared_ptr<TreeIntersector<DeviceAdapter>> tIPtr;
     VTKM_EXEC
     vtkm::Float32 rcp(vtkm::Float32 f)  const { return 1.0f/f;}
     VTKM_EXEC
@@ -66,25 +66,25 @@ public:
     Intersector(bool occlusion,
                 vtkm::Float32 maxDistance,
         const vtkm::cont::DynamicCellSet *cellset,
-                std::shared_ptr<Tree> treePtr)
+                std::shared_ptr<Tree<DeviceAdapter>> treePtr)
       : Occlusion(occlusion),
         MaxDistance(maxDistance),
     Cells(cellset)
     {
     vtkm::cont::CellSetExplicit<> cellSetExplicit = Cells->Cast<vtkm::cont::CellSetExplicit<> >();
-		ShapesPortal = cellSetExplicit.GetShapesArray(vtkm::TopologyElementTagPoint(), vtkm::TopologyElementTagCell()).GetPortalConstControl();
-		//const vtkm::cont::ArrayHandle<vtkm::Int32> indices = cellSetExplicit.GetNumIndicesArray(vtkm::TopologyElementTagPoint(), vtkm::TopologyElementTagCell());
-		//vtkm::cont::ArrayHandle<vtkm::Id> conn = cellSetExplicit.GetConnectivityArray(vtkm::TopologyElementTagPoint(), vtkm::TopologyElementTagCell());
+        ShapesPortal = cellSetExplicit.GetShapesArray(vtkm::TopologyElementTagPoint(), vtkm::TopologyElementTagCell()).GetPortalConstControl();
+        //const vtkm::cont::ArrayHandle<vtkm::Int32> indices = cellSetExplicit.GetNumIndicesArray(vtkm::TopologyElementTagPoint(), vtkm::TopologyElementTagCell());
+        //vtkm::cont::ArrayHandle<vtkm::Id> conn = cellSetExplicit.GetConnectivityArray(vtkm::TopologyElementTagPoint(), vtkm::TopologyElementTagCell());
 
-		// We need to somehow force the data set to build the index offsets
-		//vtkm::IdComponent c = indices.GetPortalControl().Get(0);
-		vtkm::Vec< vtkm::Id, 3> forceBuildIndices;
-		cellSetExplicit.GetIndices(0, forceBuildIndices);
+        // We need to somehow force the data set to build the index offsets
+        //vtkm::IdComponent c = indices.GetPortalControl().Get(0);
+        vtkm::Vec< vtkm::Id, 3> forceBuildIndices;
+        cellSetExplicit.GetIndices(0, forceBuildIndices);
 
-		OffsetsPortal = cellSetExplicit.GetIndexOffsetArray(vtkm::TopologyElementTagPoint(), vtkm::TopologyElementTagCell()).GetPortalConstControl();
+        OffsetsPortal = cellSetExplicit.GetIndexOffsetArray(vtkm::TopologyElementTagPoint(), vtkm::TopologyElementTagCell()).GetPortalConstControl();
 
-    tIPtr = std::shared_ptr<TreeIntersector>(new TreeIntersector(treePtr, ShapesPortal, OffsetsPortal));
-	}
+    tIPtr = std::shared_ptr<TreeIntersector<DeviceAdapter>>(new TreeIntersector<DeviceAdapter>(treePtr, ShapesPortal, OffsetsPortal));
+    }
     typedef void ControlSignature(FieldIn<>,
                                   FieldIn<>,
                                   FieldOut<>,
@@ -103,56 +103,56 @@ public:
                                     _7,
                                     _8);
 
-	typedef vtkm::Vec<vtkm::Float32, 3> vec3;
+    typedef vtkm::Vec<vtkm::Float32, 3> vec3;
 
 
 
-	template<typename PointPortalType, typename ScalarPortalType>
+    template<typename PointPortalType, typename ScalarPortalType>
     VTKM_EXEC
-		void operator()(const vtkm::Vec<vtkm::Float32, 3> &rayDir,
-			const vtkm::Vec<vtkm::Float32, 3> &rayOrigin,
-			vtkm::Float32 &distance,
-			vtkm::Id &hitIndex,
-			vtkm::Vec<vtkm::Float32, 3> &normal,
+        void operator()(const vtkm::Vec<vtkm::Float32, 3> &rayDir,
+            const vtkm::Vec<vtkm::Float32, 3> &rayOrigin,
+            vtkm::Float32 &distance,
+            vtkm::Id &hitIndex,
+            vtkm::Vec<vtkm::Float32, 3> &normal,
       vtkm::Float32 &scalar_out,
-			const PointPortalType &points,
-			const ScalarPortalType &scalars) const
-	{
-		float minDistance = MaxDistance;
-		hitIndex = -1;
-		float dirx = rayDir[0];
-		float diry = rayDir[1];
-		float dirz = rayDir[2];
+            const PointPortalType &points,
+            const ScalarPortalType &scalars) const
+    {
+        float minDistance = MaxDistance;
+        hitIndex = -1;
+        float dirx = rayDir[0];
+        float diry = rayDir[1];
+        float dirz = rayDir[2];
 
-		float invDirx = rcp_safe(dirx);
-		float invDiry = rcp_safe(diry);
-		float invDirz = rcp_safe(dirz);
-		int currentNode;
+        float invDirx = rcp_safe(dirx);
+        float invDiry = rcp_safe(diry);
+        float invDirz = rcp_safe(dirz);
+        int currentNode;
 
-		int todo[64];
-		int stackptr = 0;
-		int barrier = (int)END_FLAG2;
-		currentNode = 0;
+        int todo[64];
+        int stackptr = 0;
+        int barrier = (int)END_FLAG2;
+        currentNode = 0;
 
-		todo[stackptr] = barrier;
+        todo[stackptr] = barrier;
 
-		float originX = rayOrigin[0];
-		float originY = rayOrigin[1];
-		float originZ = rayOrigin[2];
-		float originDirX = originX * invDirx;
-		float originDirY = originY * invDiry;
-		float originDirZ = originZ * invDirz;
+        float originX = rayOrigin[0];
+        float originY = rayOrigin[1];
+        float originZ = rayOrigin[2];
+        float originDirX = originX * invDirx;
+        float originDirY = originY * invDiry;
+        float originDirZ = originZ * invDirz;
 
 
-		vec3 ret;
+        vec3 ret;
     vec3 cyl_top, cyl_bottom;
     vec3 center;
     vtkm::Float32 cyl_radius;
     vec3 box_ll, box_ur;
-		vtkm::UInt8 fin_type = 0;
+        vtkm::UInt8 fin_type = 0;
     vtkm::UInt8 face = 0;
-		vtkm::Id fin_offset = 0;
-		vec3 fin_center;
+        vtkm::Id fin_offset = 0;
+        vec3 fin_center;
 #if 0
     for (int i = 0; i< ShapesPortal.GetNumberOfValues(); i++) {
             vtkm::UInt8 type = ShapesPortal.Get(i);
@@ -174,7 +174,7 @@ public:
           }
         }
         break;
-			
+
 
             case vtkm::CELL_SHAPE_LINE:
                 box_ll = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset));
@@ -190,7 +190,7 @@ public:
           }
                 }
                 break;
-			
+
       case vtkm::CELL_SHAPE_VERTEX:
         center = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset));//1.5;
         ret = TreeIntersector::sphere(rayOrigin, rayDir, center, vtkm::Float32(scalars.Get(cur_offset)));
@@ -228,47 +228,47 @@ public:
     if (minDistance < MaxDistance) {
        scalar_out = 1.0;
       vec3 pos = rayOrigin + rayDir * minDistance;
-			vec3 pt;
-			switch (fin_type) {
-			//cylinder
-			case vtkm::CELL_SHAPE_TRIANGLE:
-				pt = vec3(points.Get(fin_offset)[0], pos[1], points.Get(fin_offset)[2]);
+            vec3 pt;
+            switch (fin_type) {
+            //cylinder
+            case vtkm::CELL_SHAPE_TRIANGLE:
+                pt = vec3(points.Get(fin_offset)[0], pos[1], points.Get(fin_offset)[2]);
         normal = pos - pt;
         vtkm::Normalize(normal);
-				break;
+                break;
 
-			//box
+            //box
       case vtkm::CELL_SHAPE_LINE:
         scalar_out = 0.4;
         if (face == 0) {
           normal = vec3(-1.0, 0, 0);
-				}
+                }
         else if (face == 1) {
           normal = vec3(1.0, 0, 0);
-				}
+                }
         else if (face == 2) {
           normal = vec3(0.0, -1.0, 0);
-				}
+                }
         else if (face == 3) {
           normal = vec3(0.0, 1.0, 0);
-				}
+                }
         else if (face == 4) {
           normal = vec3(0.0, 0.0, -1.0);
-				}
+                }
         else if (face == 5) {
           normal = vec3(0.0, 0.0, 1.0);
-				}
+                }
 
-				break;
-			//sphere
-			case vtkm::CELL_SHAPE_VERTEX:
+                break;
+            //sphere
+            case vtkm::CELL_SHAPE_VERTEX:
         normal = pos - fin_center;
-				vtkm::Normalize(normal);
-				break;
-			}
-		}
+                vtkm::Normalize(normal);
+                break;
+            }
+        }
 
-	   //while(currentNode != END_FLAG2)
+       //while(currentNode != END_FLAG2)
       //{
       //  if(currentNode>-1)
       //  {
@@ -398,7 +398,7 @@ public:
            const vtkm::cont::DynamicCellSet *cells,
            vtkm::cont::DynamicArrayHandleCoordinateSystem coordsHandle,
            const vtkm::cont::Field *scalarField,
-           std::shared_ptr<Tree> tp)
+           std::shared_ptr<Tree<DeviceAdapter>> tp)
   {
     vtkm::worklet::DispatcherMapField< Intersector >( Intersector( false, 10000000.f, cells, tp) )
       .Invoke( rays.Dir,
@@ -407,7 +407,7 @@ public:
 //               rays.U,
 //               rays.V,
                rays.HitIdx,
-			   rays.Normal,
+               rays.Normal,
                rays.Scalar,
                coordsHandle,
                *scalarField);

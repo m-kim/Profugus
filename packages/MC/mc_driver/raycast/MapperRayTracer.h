@@ -30,7 +30,7 @@
 class MapperRayTracer : public vtkm::rendering::Mapper
 {
 public:
-  MapperRayTracer(const vtkm::cont::DynamicCellSet &cells, std::shared_ptr<Tree> tp);
+  MapperRayTracer(const vtkm::cont::DynamicCellSet &cells, std::shared_ptr<Tree<VTKM_DEFAULT_DEVICE_ADAPTER_TAG>> tp);
 
   ~MapperRayTracer();
 
@@ -56,7 +56,7 @@ private:
 
   struct RenderFunctor;
   vtkm::cont::DynamicCellSet Cells;
-  std::shared_ptr<Tree> treePtr;
+  std::shared_ptr<Tree<VTKM_DEFAULT_DEVICE_ADAPTER_TAG>> treePtr;
 };
 
 #endif //MapperRayTracer_h

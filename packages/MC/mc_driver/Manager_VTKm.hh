@@ -69,9 +69,7 @@ class Manager_VTKm<profugus::Core> : public Manager<profugus::Core>
 {
 public:
   Manager_VTKm()
-      : Manager<profugus::Core>(),
-        dataSetBuilder(new vtkm::cont::DataSetBuilderExplicitIterative()),
-        treePtr(new Tree(dataSetBuilder))
+      : Manager<profugus::Core>()
   {
     lastx = lasty = -1;
     view = nullptr;
@@ -117,92 +115,20 @@ public:
 
   }
 
-  void test_flat(
-          vtkm::Vec<vtkm::Float32,3> &pt)
-  {
-    vtkm::cont::ArrayHandle<vtkm::UInt8>::PortalConstControl ShapesPortal;
-    vtkm::cont::ArrayHandle<vtkm::Id>::PortalConstControl OffsetsPortal;
-    vtkm::cont::DynamicCellSet dcs = treePtr->getCSG().GetCellSet();
-
-    vtkm::cont::CellSetExplicit<> cellSetExplicit = dcs.Cast<vtkm::cont::CellSetExplicit<> >();
-    vtkm::Vec< vtkm::Id, 3> forceBuildIndices;
-    cellSetExplicit.GetIndices(0, forceBuildIndices);
-    ShapesPortal = cellSetExplicit.GetShapesArray(vtkm::TopologyElementTagPoint(), vtkm::TopologyElementTagCell()).GetPortalConstControl();
-//    const vtkm::cont::Field *scalarField;
-
-    vtkm::cont::DynamicArrayHandleCoordinateSystem coords = treePtr->getCSG().GetCoordinateSystem().GetData();
-    vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::Float32,3>> points;
-    coords.CopyTo(points);
-
-   vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::Float32,3>>::PortalControl wtf = points.GetPortalControl();
-   OffsetsPortal = cellSetExplicit.GetIndexOffsetArray(vtkm::TopologyElementTagPoint(), vtkm::TopologyElementTagCell()).GetPortalConstControl();
-
-   int stack[64], s_cnt[64], s_i[64], stack_ptr;
-   int _idx = 0;//
-   int _cnt = 1;//child_cnt[_idx];
-   //_idx= child_idx[_idx];
-    int _vtx = treePtr->getVtx(_idx);//child_vtx[_idx];
-    vtkm::Vec<vtkm::Float32,3> lower, upper;
-    //vtkm::Id cur_offset = coords.GetNumberOfValues();
-
-    stack_ptr = 0;
-    stack[stack_ptr] = _idx;
-    s_cnt[stack_ptr] = _cnt;
-    stack_ptr++;
-    for (int i=0; i<_cnt;){
-      _vtx = treePtr->getVtx(_idx + i);//child_vtx[_idx + i];
-      //lower = wtf.Get(_vtx);
-      //upper = wtf.Get( _vtx + 1);
-      vtkm::UInt8 type = ShapesPortal.Get(_vtx);
-      vtkm::Id cur_offset = OffsetsPortal.Get(_vtx);
-      lower = wtf.Get(cur_offset);
-      upper = wtf.Get(cur_offset+1);
-      if (upper[0] > pt[0] &&
-              upper[1] > pt[1] &&
-              upper[2] > pt[2] &&
-              pt[0] > lower[0] &&
-              pt[1] > lower[1] &&
-              pt[2] > lower[2]){
-          if(type == vtkm::CELL_SHAPE_TETRA){
-              //push onto stack
-              stack[stack_ptr] = _idx;
-              s_cnt[stack_ptr] = _cnt;
-              s_i[stack_ptr] = i;
-
-
-              _cnt = treePtr->getCnt(_idx);//child_cnt[_idx];
-              _idx = treePtr->getIdx(_idx);//child_idx[_idx];
-              _vtx = treePtr->getVtx(_idx);//child_vtx[_idx];
-              i = 0;
-              stack_ptr++;
-          }
-          else{
-              //reached a leaf
-            stack_ptr--;
-            _idx = stack[stack_ptr];
-            _cnt = s_cnt[stack_ptr];
-            i = s_i[stack_ptr];
-            i++;
-          }
-      }
-      else{
-          //doesn't matter, do nothing
-        i++;
-
-      }
-    }
-  }
 
   void raycast()
   {
+      typedef VTKM_DEFAULT_DEVICE_ADAPTER_TAG DeviceAdapter;
     std::shared_ptr<profugus::Core > sp_geo_core = this->d_geometry;
     profugus::Core::Array_t ot = sp_geo_core->array();
     def::Space_Vector corner = ot.corner();
 #if 1
 
     quick_stop = 0;
-    //treePtr->build(ot, radii, corner);
-    tb = std::shared_ptr<TreeBuilder>(new TreeBuilder(treePtr, ot, radii, corner));
+    std::shared_ptr<vtkm::cont::DataSetBuilderExplicitIterative> dataSetBuilder(new vtkm::cont::DataSetBuilderExplicitIterative());
+    std::shared_ptr<Tree<DeviceAdapter>> treePtr(new Tree<DeviceAdapter>(dataSetBuilder));
+    std::shared_ptr<TreeBuilder<DeviceAdapter>> tb(new TreeBuilder<DeviceAdapter>(treePtr));
+    tb->build(ot, corner, radii);
     dataSetFieldAdd.AddPointField(treePtr->getCSG(), "radius", radii);
 
 #else
@@ -280,7 +206,7 @@ public:
     treePtr->test(0);
 #else
     vtkm::Vec<vtkm::Float32,3> wtf(2,2,2);
-    test_flat(wtf);
+    //test_flat(wtf);
     view = new vtkm::rendering::View3D(scene, mapper, canvas, new_cam, bg);
     new_cam.SetPosition(pos);
     view->SetCamera(new_cam);
@@ -314,14 +240,11 @@ public:
   }
 private:
   bool quick_stop;
-  std::shared_ptr<vtkm::cont::DataSetBuilderExplicitIterative> dataSetBuilder;
   vtkm::cont::DataSetFieldAdd dataSetFieldAdd;
   std::vector<vtkm::Float32> radii;
   def::Space_Vector tot_len;
   int lastx, lasty;
   vtkm::rendering::View3D *view;
-  std::shared_ptr<Tree> treePtr;
-  std::shared_ptr<TreeBuilder> tb;
 
 };
 

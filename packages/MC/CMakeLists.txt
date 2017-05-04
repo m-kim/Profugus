@@ -15,7 +15,9 @@ mc_driver/raycast/TriangleIntersector.h
 mc_driver/raycast/RayTracer.h
 mc_driver/raycast/MapperRayTracer.cxx
 mc_driver/raycast/Tree.cpp
-mc_driver/raycast/TreeIntersector.cpp
+mc_driver/raycast/TreeBuilder.h
+mc_driver/raycast/TreeIntersector.h
+
 )
 
 INCLUDE(AppendSet)

@@ -400,7 +400,7 @@ protected:
 
   const vtkm::cont::DynamicCellSet *Cells;
 
-  std::shared_ptr<Tree> treePtr;
+  std::shared_ptr<Tree<VTKM_DEFAULT_DEVICE_ADAPTER_TAG>> treePtr;
 
   vtkm::cont::ArrayHandle< vtkm::Vec<vtkm::Id, 4> > Indices;
   vtkm::cont::ArrayHandle<vtkm::Float32> Scalars;
@@ -436,7 +436,7 @@ public:
                const vtkm::Range &scalarRange,
                const vtkm::Bounds &dataBounds,
                const vtkm::cont::DynamicCellSet &cells,
-               std::shared_ptr<Tree> tp)
+               std::shared_ptr<Tree<VTKM_DEFAULT_DEVICE_ADAPTER_TAG>> tp)
   {
     IsSceneDirty = true;
     CoordsHandle = coordsHandle;
