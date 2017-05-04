@@ -36,6 +36,9 @@ struct MapperRayTracer::InternalsType
   std::shared_ptr<vtkm::cont::internal::SimplePolymorphicContainerBase>
       RayTracerContainer;
 
+  std::shared_ptr<vtkm::cont::internal::SimplePolymorphicContainerBase>
+      TreeContainer;
+
   VTKM_CONT_EXPORT
   InternalsType()
     : Canvas(nullptr)
@@ -71,14 +74,51 @@ struct MapperRayTracer::InternalsType
 
     return tracer;
   }
+
+  template<typename DeviceAdapter>
+  VTKM_CONT_EXPORT
+  Tree<DeviceAdapter> *GetTree(DeviceAdapter)
+  {
+    VTKM_IS_DEVICE_ADAPTER_TAG(DeviceAdapter);
+
+    typedef Tree<DeviceAdapter> TreeType;
+    typedef vtkm::cont::internal::SimplePolymorphicContainer<TreeType>
+        ContainerType;
+    TreeType *treePtr = NULL;
+    if (this->TreeContainer)
+    {
+      ContainerType *container =
+          dynamic_cast<ContainerType *>(this->TreeContainer.get());
+      if (container)
+      {
+        treePtr = &container->Item;
+      }
+    }
+
+    if (treePtr == NULL)
+    {
+      ContainerType *container
+          = new vtkm::cont::internal::SimplePolymorphicContainer<TreeType>;
+      treePtr = &container->Item;
+      this->TreeContainer.reset(container);
+    }
+
+    return treePtr;
+  }
+
 };
 
 MapperRayTracer::MapperRayTracer(const vtkm::cont::DynamicCellSet &cells,
-                                     std::shared_ptr<Tree<VTKM_DEFAULT_DEVICE_ADAPTER_TAG>> tp)
+                                 vtkm::cont::ArrayHandle<vtkm::UInt32 > &cntArray,
+                                 vtkm::cont::ArrayHandle<vtkm::UInt32 > &idxArray,
+                                 vtkm::cont::ArrayHandle<vtkm::UInt32 > &vtxArray
+                                 )
 
   : Internals(new InternalsType),
     Cells(cells),
-    treePtr(tp)
+    CntArray(cntArray),
+    IdxArray(idxArray),
+    VtxArray(vtxArray)
 {  }
 
 MapperRayTracer::~MapperRayTracer()
@@ -112,8 +152,10 @@ struct MapperRayTracer::RenderFunctor
   vtkm::rendering::Camera Camera;
   vtkm::Range ScalarRange;
   vtkm::cont::DynamicCellSet Cells;
-  std::shared_ptr<Tree<VTKM_DEFAULT_DEVICE_ADAPTER_TAG>> treePtr;
 
+  vtkm::cont::ArrayHandle<vtkm::UInt32 > CntArray;
+  vtkm::cont::ArrayHandle<vtkm::UInt32 > IdxArray;
+  vtkm::cont::ArrayHandle<vtkm::UInt32 > VtxArray;
   VTKM_CONT_EXPORT
   RenderFunctor(MapperRayTracer *self,
                 const vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::Id,4> > &indices,
@@ -124,7 +166,9 @@ struct MapperRayTracer::RenderFunctor
                 const vtkm::cont::DynamicCellSet &cells,
                 const vtkm::rendering::Camera &camera,
                 const vtkm::Range &scalarRange,
-                std::shared_ptr<Tree<VTKM_DEFAULT_DEVICE_ADAPTER_TAG>> tp)
+                vtkm::cont::ArrayHandle<vtkm::UInt32 > cntArray,
+                vtkm::cont::ArrayHandle<vtkm::UInt32 > idxArray,
+                vtkm::cont::ArrayHandle<vtkm::UInt32 > vtxArray)
     : Self(self),
       TriangleIndices(indices),
       NumberOfTriangles(numberOfTriangles),
@@ -133,7 +177,9 @@ struct MapperRayTracer::RenderFunctor
       Camera(camera),
       ScalarRange(scalarRange),
       Cells(cells),
-      treePtr(tp)
+      CntArray(cntArray),
+      IdxArray(idxArray),
+      VtxArray(vtxArray)
   {  }
 
   template<typename Device>
@@ -144,11 +190,15 @@ struct MapperRayTracer::RenderFunctor
     RayTracer<Device> *tracer =
         this->Self->Internals->GetRayTracer(Device());
 
+    Tree<Device> *treePtr = this->Self->Internals->GetTree(Device());
     tracer->GetCamera().SetParameters(this->Camera,
                                       *this->Self->Internals->Canvas);
 
     vtkm::Bounds dataBounds = this->Coordinates.GetBounds(Device());
 
+    treePtr->SetCnt(CntArray);
+    treePtr->SetIdx(IdxArray);
+    treePtr->SetVtx(VtxArray);
     tracer->SetData(this->Coordinates.GetData(),
                     this->TriangleIndices,
                     this->ScalarField,
@@ -156,7 +206,7 @@ struct MapperRayTracer::RenderFunctor
                     this->ScalarRange,
                     dataBounds,
                     this->Cells,
-                    this->treePtr);
+                    treePtr);
     tracer->SetColorMap(this->Self->ColorMap);
     tracer->SetBackgroundColor(
           this->Self->Internals->Canvas->GetBackgroundColor().Components);
@@ -188,7 +238,9 @@ void MapperRayTracer::RenderCells(
                         this->Cells,
                         camera,
                         scalarRange,
-                        treePtr);
+                        CntArray,
+                        IdxArray,
+                        VtxArray);
   vtkm::cont::TryExecute(functor);
 }
 

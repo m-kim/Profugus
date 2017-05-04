@@ -10,7 +10,9 @@ public:
     TreeBuilder(std::shared_ptr<Tree<DeviceAdapterTag>> _treePtr ):
         vtx_cnt(0),
         cell_cnt(0),
-        treePtr(_treePtr)
+        treePtr(_treePtr),
+        dataSetBuilder(new vtkm::cont::DataSetBuilderExplicitIterative())
+
     {
 
     }
@@ -70,6 +72,11 @@ public:
     vtkm::UInt32 getIdx(vtkm::Id idx){return child_idx[idx];}
     vtkm::UInt32 getVtx(vtkm::Id idx){return child_vtx[idx];}
 
+    vtkm::cont::ArrayHandle<vtkm::UInt32 > getCnt(){return vtkm::cont::make_ArrayHandle(child_cnt);}
+    vtkm::cont::ArrayHandle<vtkm::UInt32 > getIdx(){return vtkm::cont::make_ArrayHandle(child_idx);}
+    vtkm::cont::ArrayHandle<vtkm::UInt32 > getVtx(){return vtkm::cont::make_ArrayHandle(child_vtx);}
+
+    vtkm::cont::DataSet &getCSG(){return csg;}
 
     std::shared_ptr<Tree<DeviceAdapterTag>> treePtr;
 protected:
@@ -256,17 +263,17 @@ protected:
 
     void AddCell(const vtkm::UInt8 shape)
     {
-        treePtr->dataSetBuilder->AddCell(shape);
+        dataSetBuilder->AddCell(shape);
     }
 
     void AddPoint(vtkm::Float32 x, vtkm::Float32 y, vtkm::Float32 z)
     {
-        treePtr->dataSetBuilder->AddPoint(x,y,z);
+        dataSetBuilder->AddPoint(x,y,z);
     }
 
     void AddCellPoint(vtkm::Id idx)
     {
-        treePtr->dataSetBuilder->AddCellPoint(idx);
+        dataSetBuilder->AddCellPoint(idx);
     }
 
     void AddCellPoint()
@@ -276,9 +283,12 @@ protected:
 
     void Create()
     {
-        treePtr->csg = treePtr->dataSetBuilder->Create();
+        csg = dataSetBuilder->Create();
     }
 
+
+    vtkm::cont::DataSet csg;
+    std::shared_ptr<vtkm::cont::DataSetBuilderExplicitIterative> dataSetBuilder;
 
     std::vector<vtkm::UInt32> child_idx, child_cnt, child_vtx, child_idx_vtx;
     vtkm::UInt32 vtx_cnt, cell_cnt;

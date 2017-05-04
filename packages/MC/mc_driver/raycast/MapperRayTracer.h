@@ -30,7 +30,11 @@
 class MapperRayTracer : public vtkm::rendering::Mapper
 {
 public:
-  MapperRayTracer(const vtkm::cont::DynamicCellSet &cells, std::shared_ptr<Tree<VTKM_DEFAULT_DEVICE_ADAPTER_TAG>> tp);
+  MapperRayTracer(const vtkm::cont::DynamicCellSet &cells,
+                  vtkm::cont::ArrayHandle<vtkm::UInt32 > &cntArray,
+                  vtkm::cont::ArrayHandle<vtkm::UInt32 > &idxArray,
+                  vtkm::cont::ArrayHandle<vtkm::UInt32 > &vtxArray
+                  );
 
   ~MapperRayTracer();
 
@@ -41,7 +45,8 @@ public:
                    const vtkm::cont::Field &scalarField,
                    const vtkm::rendering::ColorTable &colorTable,
                    const vtkm::rendering::Camera &camera,
-                   const vtkm::Range &scalarRange) VTKM_OVERRIDE;
+                   const vtkm::Range &scalarRange
+                   ) VTKM_OVERRIDE;
 
   virtual void StartScene() VTKM_OVERRIDE;
   virtual void EndScene() VTKM_OVERRIDE;
@@ -56,7 +61,11 @@ private:
 
   struct RenderFunctor;
   vtkm::cont::DynamicCellSet Cells;
-  std::shared_ptr<Tree<VTKM_DEFAULT_DEVICE_ADAPTER_TAG>> treePtr;
+  vtkm::cont::ArrayHandle<vtkm::UInt32 > CntArray;
+  vtkm::cont::ArrayHandle<vtkm::UInt32 > IdxArray;
+  vtkm::cont::ArrayHandle<vtkm::UInt32 > VtxArray;
+
+
 };
 
 #endif //MapperRayTracer_h

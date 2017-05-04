@@ -125,11 +125,10 @@ public:
 #if 1
 
     quick_stop = 0;
-    std::shared_ptr<vtkm::cont::DataSetBuilderExplicitIterative> dataSetBuilder(new vtkm::cont::DataSetBuilderExplicitIterative());
-    std::shared_ptr<Tree<DeviceAdapter>> treePtr(new Tree<DeviceAdapter>(dataSetBuilder));
+    std::shared_ptr<Tree<DeviceAdapter>> treePtr(new Tree<DeviceAdapter>());
     std::shared_ptr<TreeBuilder<DeviceAdapter>> tb(new TreeBuilder<DeviceAdapter>(treePtr));
     tb->build(ot, corner, radii);
-    dataSetFieldAdd.AddPointField(treePtr->getCSG(), "radius", radii);
+    dataSetFieldAdd.AddPointField(tb->getCSG(), "radius", radii);
 
 #else
 
@@ -183,12 +182,15 @@ public:
 
     vtkm::rendering::Color bg(0.2f, 0.2f, 0.2f, 1.0f);
     vtkm::rendering::CanvasRayTracer canvas;
-    MapperRayTracer mapper(treePtr->getCSG().GetCellSet(), treePtr);
+    vtkm::cont::ArrayHandle<vtkm::UInt32 > cntArray = tb->getCnt();
+    vtkm::cont::ArrayHandle<vtkm::UInt32 > idxArray = tb->getIdx();
+    vtkm::cont::ArrayHandle<vtkm::UInt32 > vtxArray = tb->getVtx();
+    MapperRayTracer mapper(tb->getCSG().GetCellSet(), cntArray, idxArray, vtxArray );
 
     vtkm::rendering::Scene scene;
-    scene.AddActor(vtkm::rendering::Actor(treePtr->getCSG().GetCellSet(),
-                                          treePtr->getCSG().GetCoordinateSystem(),
-                                          treePtr->getCSG().GetField("radius"),
+    scene.AddActor(vtkm::rendering::Actor(tb->getCSG().GetCellSet(),
+                                          tb->getCSG().GetCoordinateSystem(),
+                                          tb->getCSG().GetField("radius"),
                                           vtkm::rendering::ColorTable("thermal")));
 
     //Create vtkm rendering stuff.

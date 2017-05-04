@@ -18,7 +18,7 @@ public:
 
   VTKM_EXEC_CONT
   TreeIntersector(
-      std::shared_ptr<Tree<DeviceAdapterTag>> _treePtr,
+      Tree<DeviceAdapterTag> *_treePtr,
       const vtkm::cont::ArrayHandle<vtkm::UInt8>::PortalConstControl &sp,
       const vtkm::cont::ArrayHandle<vtkm::Id>::PortalConstControl &op)
     :treePtr(_treePtr),
@@ -338,7 +338,7 @@ t = (nd - mn) / nn;
   }
 
 
-  std::shared_ptr<Tree<DeviceAdapterTag>> treePtr;
+  Tree<DeviceAdapterTag> *treePtr;
   VTKM_CONT
   template<typename PointPortalType, typename ScalarPortalType>
   void recurse(

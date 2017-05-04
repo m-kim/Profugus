@@ -66,7 +66,7 @@ public:
     Intersector(bool occlusion,
                 vtkm::Float32 maxDistance,
         const vtkm::cont::DynamicCellSet *cellset,
-                std::shared_ptr<Tree<DeviceAdapter>> treePtr)
+                Tree<DeviceAdapter> *treePtr)
       : Occlusion(occlusion),
         MaxDistance(maxDistance),
     Cells(cellset)
@@ -398,7 +398,7 @@ public:
            const vtkm::cont::DynamicCellSet *cells,
            vtkm::cont::DynamicArrayHandleCoordinateSystem coordsHandle,
            const vtkm::cont::Field *scalarField,
-           std::shared_ptr<Tree<DeviceAdapter>> tp)
+           Tree<DeviceAdapter> * tp)
   {
     vtkm::worklet::DispatcherMapField< Intersector >( Intersector( false, 10000000.f, cells, tp) )
       .Invoke( rays.Dir,
