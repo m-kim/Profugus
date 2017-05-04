@@ -17,15 +17,8 @@ public:
   typedef typename Tree<DeviceAdapterTag>::vec3 vec3;
 
   VTKM_EXEC_CONT
-  TreeIntersector(
-      Tree<DeviceAdapterTag> *_treePtr,
-      const vtkm::cont::ArrayHandle<vtkm::UInt8>::PortalConstControl &sp,
-      const vtkm::cont::ArrayHandle<vtkm::Id>::PortalConstControl &op)
-    :treePtr(_treePtr),
-      ShapesPortal(sp),
-      OffsetsPortal(op)
+  TreeIntersector()
   {
-
   }
 
   VTKM_EXEC_CONT
@@ -190,6 +183,9 @@ t = (nd - mn) / nn;
   VTKM_EXEC
   template<typename PointPortalType, typename ScalarPortalType>
   void query(
+          const vtkm::cont::ArrayHandle<vtkm::UInt8>::PortalConstControl ShapesPortal,
+          const vtkm::cont::ArrayHandle<vtkm::Id>::PortalConstControl OffsetsPortal,
+
             const PointPortalType &points,
             const ScalarPortalType &scalars,
             const vtkm::Vec<vtkm::Float32, 3> &rayOrigin,
@@ -199,7 +195,8 @@ t = (nd - mn) / nn;
             vtkm::Id &fin_offset,
             vec3 &fin_center,
             vtkm::Float32 &minDistance,
-            vtkm::Id &hitIndex) const
+            vtkm::Id &hitIndex,
+          const Tree<DeviceAdapterTag> &treePtr) const
   {
 
     vec3 cyl_top, cyl_bottom;
@@ -211,7 +208,7 @@ t = (nd - mn) / nn;
     int _idx = 0;//
 
     vtkm::Vec<vtkm::Float32, 3> lower, upper;
-    int _vtx = treePtr->getVtx(_idx);//child_vtx[_idx];
+    int _vtx = treePtr.getVtx(_idx);//child_vtx[_idx];
     vtkm::UInt8 type = ShapesPortal.Get(_vtx);
     vtkm::Id cur_offset = OffsetsPortal.Get(_vtx);
     lower = points.Get(cur_offset);
@@ -229,7 +226,7 @@ t = (nd - mn) / nn;
   //           fin_center,
   //           minDistance,
   //           hitIndex,
-  //           treePtr->child_cnt[_idx],
+  //           treePtr.child_cnt[_idx],
   //           _idx);
 
          vtkm::Vec<vtkm::Float32,3> lower, upper;
@@ -238,15 +235,15 @@ t = (nd - mn) / nn;
           int _cnt = 0;
          stack_ptr = 0;
          stack[stack_ptr] = _idx;
-         _cnt = s_cnt[stack_ptr] = treePtr->getCnt(_idx);//child_cnt[_idx];
+         _cnt = s_cnt[stack_ptr] = treePtr.getCnt(_idx);//child_cnt[_idx];
          s_i[stack_ptr] = 0;
-         _idx = treePtr->getIdx(_idx);//child_idx[_idx];
+         _idx = treePtr.getIdx(_idx);//child_idx[_idx];
 
          stack_ptr++;
          int i = 0;
          do{
            for(;i < _cnt;){
-             _vtx = treePtr->getVtx(_idx+i);//child_vtx[_idx + i];
+             _vtx = treePtr.getVtx(_idx+i);//child_vtx[_idx + i];
              //lower = wtf.Get(_vtx);
              //upper = wtf.Get( _vtx + 1);
              vtkm::UInt8 type = ShapesPortal.Get(_vtx);
@@ -262,8 +259,8 @@ t = (nd - mn) / nn;
                  s_i[stack_ptr] = i;
 
 
-                 _cnt = treePtr->getCnt(_idx+i);//child_cnt[_idx + i];
-                 _idx = treePtr->getIdx(_idx+i);//child_idx[_idx + i];
+                 _cnt = treePtr.getCnt(_idx+i);//child_cnt[_idx + i];
+                 _idx = treePtr.getIdx(_idx+i);//child_idx[_idx + i];
                  i = 0;
                  stack_ptr++;
                }
@@ -337,113 +334,6 @@ t = (nd - mn) / nn;
 
   }
 
-
-  Tree<DeviceAdapterTag> *treePtr;
-  VTKM_CONT
-  template<typename PointPortalType, typename ScalarPortalType>
-  void recurse(
-            const PointPortalType &points,
-            const ScalarPortalType &scalars,
-            const vtkm::Vec<vtkm::Float32, 3> &rayOrigin,
-      const vtkm::Vec<vtkm::Float32, 3> &rayDir,
-            vtkm::UInt8 &fin_type,
-            vtkm::UInt8 &face,
-            vtkm::Id &fin_offset,
-            vec3 &fin_center,
-            vtkm::Float32 &minDistance,
-            vtkm::Id &hitIndex,
-          int _cnt,
-      int _idx) const
-  {
-    vec3 cyl_top, cyl_bottom;
-    vec3 center;
-    vtkm::Float32 cyl_radius;
-    vec3 box_ll, box_ur;
-    vtkm::Vec<vtkm::Float32,3> lower, upper;
-    vec3 ret;
-    _idx = treePtr->child_idx[_idx];
-
-    for(int i = 0;i < _cnt; i++){
-     int _vtx = treePtr->child_vtx[_idx + i];
-     //lower = wtf.Get(_vtx);
-     //upper = wtf.Get( _vtx + 1);
-     vtkm::UInt8 type = ShapesPortal.Get(_vtx);
-     vtkm::Id cur_offset = OffsetsPortal.Get(_vtx);
-      if(type == BOUND){
-        lower = points.Get(cur_offset);
-        upper = points.Get(cur_offset+1);
-        ret = box(rayOrigin, rayDir, lower, upper);
-        if (ret[0] > 0){
-
-          recurse(points,
-                  scalars,
-                  rayOrigin,
-                  rayDir,
-                  fin_type,
-                  face,
-                  fin_offset,
-                  fin_center,
-                  minDistance,
-                  hitIndex,
-                  treePtr->child_cnt[_idx+i],
-                  _idx + i);
-        }
-      }
-     else{
-
-       //reached a leaf
-       switch(type){
-       case CYLINDER:
-         cyl_bottom = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset));
-         cyl_top = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset + 1));
-         cyl_radius = vtkm::Float32(scalars.Get(cur_offset));
-         //ret = vtkm::Vec<vtkm::Float32, 3>(1,1,1);
-         ret = cylinder(rayOrigin, rayDir, cyl_bottom, cyl_top, cyl_radius);
-         if (ret[0] > 0) {
-           if (ret[1] < minDistance) {
-             minDistance = ret[1];
-             hitIndex = 35;
-             fin_type = type;
-             fin_offset = cur_offset;
-           }
-         }
-         break;
-
-       case BOX:
-         box_ll = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset));
-         box_ur = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset+1));
-         ret = box(rayOrigin, rayDir, box_ll, box_ur);
-         if (ret[0] > 0) {
-           if (ret[1] < minDistance) {
-             minDistance = ret[1];
-             hitIndex = 35;
-             fin_type = type;
-             fin_offset = cur_offset;
-             face = ret[2];
-           }
-         }
-         break;
-
-       case SPHERE:
-         center = vtkm::Vec<vtkm::Float32, 3>(points.Get(cur_offset));//1.5;
-         ret = sphere(rayOrigin, rayDir, center, vtkm::Float32(scalars.Get(cur_offset)));
-         if (ret[0] > 0) {
-           if (ret[1] < minDistance) {
-             minDistance = ret[1];
-             hitIndex = 35;
-             fin_type = type;
-             fin_offset = cur_offset;
-             fin_center = center;
-           }
-         }
-         break;
-       }
-     }
-   }
-  }
-protected:
-  const vtkm::cont::ArrayHandle<vtkm::UInt8>::PortalConstControl ShapesPortal;
-  const vtkm::cont::ArrayHandle<vtkm::Id>::PortalConstControl OffsetsPortal;
 };
 
 

@@ -8,7 +8,8 @@
 #include <vtkm/cont/DataSetBuilderExplicit.h>
 
 template<typename DeviceAdapterTag>
-class Tree{
+class Tree : public vtkm::exec::ExecutionObjectBase
+{
 private:
   typedef typename vtkm::cont::ArrayHandle<vtkm::UInt32>
       ::template ExecutionTypes<DeviceAdapterTag>::Portal PortalType;
@@ -27,9 +28,9 @@ public:
   void AddCellPoint(vtkm::Id idx);
   void AddCellPoint();
   void Create();
-  vtkm::UInt32 getCnt(vtkm::Id id){return cnt.Get(id);}
-  vtkm::UInt32 getIdx(vtkm::Id id){return idx.Get(id);}
-  vtkm::UInt32 getVtx(vtkm::Id id){return vtx.Get(id);}
+  vtkm::UInt32 getCnt(vtkm::Id id) const {return cnt.Get(id);}
+  vtkm::UInt32 getIdx(vtkm::Id id) const {return idx.Get(id);}
+  vtkm::UInt32 getVtx(vtkm::Id id) const {return vtx.Get(id);}
 
   void SetCnt(vtkm::cont::ArrayHandle<vtkm::UInt32 > cntArray){
     cnt = cntArray.PrepareForInPlace(DeviceAdapterTag());

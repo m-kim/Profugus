@@ -56,7 +56,7 @@ public:
     const vtkm::cont::DynamicCellSet *Cells;
     vtkm::cont::ArrayHandle<vtkm::UInt8>::PortalConstControl ShapesPortal;
     vtkm::cont::ArrayHandle<vtkm::Id>::PortalConstControl OffsetsPortal;
-  std::shared_ptr<TreeIntersector<DeviceAdapter>> tIPtr;
+    TreeIntersector<DeviceAdapter> tIPtr;
     VTKM_EXEC
     vtkm::Float32 rcp(vtkm::Float32 f)  const { return 1.0f/f;}
     VTKM_EXEC
@@ -65,8 +65,7 @@ public:
     VTKM_CONT_EXPORT
     Intersector(bool occlusion,
                 vtkm::Float32 maxDistance,
-        const vtkm::cont::DynamicCellSet *cellset,
-                Tree<DeviceAdapter> *treePtr)
+        const vtkm::cont::DynamicCellSet *cellset)
       : Occlusion(occlusion),
         MaxDistance(maxDistance),
     Cells(cellset)
@@ -83,7 +82,7 @@ public:
 
         OffsetsPortal = cellSetExplicit.GetIndexOffsetArray(vtkm::TopologyElementTagPoint(), vtkm::TopologyElementTagCell()).GetPortalConstControl();
 
-    tIPtr = std::shared_ptr<TreeIntersector<DeviceAdapter>>(new TreeIntersector<DeviceAdapter>(treePtr, ShapesPortal, OffsetsPortal));
+
     }
     typedef void ControlSignature(FieldIn<>,
                                   FieldIn<>,
@@ -93,7 +92,8 @@ public:
                                   FieldOut<>,
 
                                   WholeArrayIn<vtkm::rendering::raytracing::Vec3RenderingTypes>,
-                                  WholeArrayIn<vtkm::rendering::raytracing::ScalarRenderingTypes>);
+                                  WholeArrayIn<vtkm::rendering::raytracing::ScalarRenderingTypes>,
+                                  ExecObject);
     typedef void ExecutionSignature(_1,
                                     _2,
                                     _3,
@@ -101,13 +101,14 @@ public:
                                     _5,
                                     _6,
                                     _7,
-                                    _8);
+                                    _8,
+                                    _9);
 
     typedef vtkm::Vec<vtkm::Float32, 3> vec3;
 
 
 
-    template<typename PointPortalType, typename ScalarPortalType>
+    template<typename PointPortalType, typename ScalarPortalType, typename TreeType>
     VTKM_EXEC
         void operator()(const vtkm::Vec<vtkm::Float32, 3> &rayDir,
             const vtkm::Vec<vtkm::Float32, 3> &rayOrigin,
@@ -116,7 +117,8 @@ public:
             vtkm::Vec<vtkm::Float32, 3> &normal,
       vtkm::Float32 &scalar_out,
             const PointPortalType &points,
-            const ScalarPortalType &scalars) const
+            const ScalarPortalType &scalars,
+            const TreeType &tree) const
     {
         float minDistance = MaxDistance;
         hitIndex = -1;
@@ -209,7 +211,7 @@ public:
         }
 
 #else
-    tIPtr->query(points, scalars, rayOrigin, rayDir, fin_type, face,fin_offset, fin_center, minDistance, hitIndex);
+    tIPtr.query(ShapesPortal, OffsetsPortal, points, scalars, rayOrigin, rayDir, fin_type, face,fin_offset, fin_center, minDistance, hitIndex, tree);
 //    vtkm::UInt8 tree_fin_type = 0;
 //    vtkm::UInt8 tree_face = 0;
 //    vtkm::Id tree_fin_offset = 0, tree_hitIndex;
@@ -398,9 +400,9 @@ public:
            const vtkm::cont::DynamicCellSet *cells,
            vtkm::cont::DynamicArrayHandleCoordinateSystem coordsHandle,
            const vtkm::cont::Field *scalarField,
-           Tree<DeviceAdapter> * tp)
+           Tree<DeviceAdapter> &tp)
   {
-    vtkm::worklet::DispatcherMapField< Intersector >( Intersector( false, 10000000.f, cells, tp) )
+    vtkm::worklet::DispatcherMapField< Intersector >( Intersector( false, 10000000.f, cells) )
       .Invoke( rays.Dir,
                rays.Origin,
                rays.Distance,
@@ -410,7 +412,8 @@ public:
                rays.Normal,
                rays.Scalar,
                coordsHandle,
-               *scalarField);
+               *scalarField,
+               tp);
   }
 
 }; // class intersector

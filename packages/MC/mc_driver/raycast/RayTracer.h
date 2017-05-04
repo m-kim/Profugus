@@ -474,7 +474,7 @@ public:
     }
 
     TriangleIntersector<DeviceAdapter> intersector;
-    intersector.run(Rays, Cells, CoordsHandle, ScalarField, treePtr);
+    intersector.run(Rays, Cells, CoordsHandle, ScalarField, *treePtr);
     Reflector<DeviceAdapter> reflector;
     reflector.run(Rays, CoordsHandle, ScalarField, ScalarRange);
     vtkm::worklet::DispatcherMapField< IntersectionPoint >( IntersectionPoint() )
