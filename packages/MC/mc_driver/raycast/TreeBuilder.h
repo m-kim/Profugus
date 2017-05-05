@@ -2,6 +2,7 @@
 #define TREEBUILDER_H
 
 #include "Tree.h"
+#include <vtkm/io/reader/VTKDataSetReader.h>
 
 template<typename DeviceAdapterTag>
 class TreeBuilder
@@ -77,6 +78,60 @@ public:
     vtkm::cont::ArrayHandle<vtkm::UInt32 > getVtx(){return vtkm::cont::make_ArrayHandle(child_vtx);}
 
     vtkm::cont::DataSet &getCSG(){return csg;}
+
+    void load(const char *fn)
+    {
+        vtkm::io::reader::VTKDataSetReader reader(fn);
+        reader.ReadDataSet();
+        csg = reader.GetDataSet();
+
+        std::ifstream cntf;
+        cntf.open("count.dat");
+        size_t size = 0;
+        cntf.read((char*)&size, sizeof(size_t));
+        child_cnt.resize(size);
+        cntf.read((char*)&child_cnt[0], sizeof(size_t) * size);
+
+        std::ifstream idxf;
+        idxf.open("index.dat");
+        size = 0;
+        idxf.read((char*)&size, sizeof(size_t));
+        child_idx.resize(size);
+        idxf.read((char*)&child_idx[0], sizeof(size_t) * size);
+
+        std::ifstream vtxf;
+        vtxf.open("vertex.dat");
+        size = 0;
+        vtxf.read((char*)&size, sizeof(size_t));
+        child_vtx.resize(size);
+        vtxf.read((char*)&child_vtx[0], sizeof(size_t) * size);
+
+    }
+
+    void write()
+    {
+        vtkm::io::writer::VTKDataSetWriter writer("dataset.vtk");
+        writer.WriteDataSet(getCSG());
+
+        std::ofstream cntf;
+        cntf.open("count.dat");
+        size_t size = child_cnt.size();
+        cntf.write((char*)&size, sizeof(size_t));
+        cntf.write((char*)&child_cnt[0], sizeof(vtkm::UInt32) * size);
+
+        std::ofstream idxf;
+        idxf.open("index.dat");
+        size = child_idx.size();
+        idxf.write((char*)&size, sizeof(size_t));
+        idxf.write((char*)&child_idx[0], sizeof(vtkm::UInt32) * size);
+
+        std::ofstream vtxf;
+        vtxf.open("vertex.dat");
+        size = child_vtx.size();
+        vtxf.write((char*)&size, sizeof(size_t));
+        vtxf.write((char*)&child_vtx[0], sizeof(vtkm::UInt32) * size);
+
+    }
 
     std::shared_ptr<Tree<DeviceAdapterTag>> treePtr;
 protected:

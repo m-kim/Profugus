@@ -28,12 +28,16 @@
 #include <vtkm/cont/DataSet.h>
 #include <vtkm/cont/testing/MakeTestDataSet.h>
 #include <vtkm/rendering/CanvasRayTracer.h>
+#include <vtkm/io/writer/VTKDataSetWriter.h>
+
 #include "raycast/MapperRayTracer.h"
 #include "raycast/Tree.h"
 #include "raycast/TreeBuilder.h"
 
 #include <vtkm/rendering/View3D.h>
 #include <vtkm/rendering/ColorTable.h>
+#include <iostream>
+#include <fstream>
 //#include <QRgb>
 //#include <QImage>
 //#include <QImageWriter>
@@ -127,7 +131,10 @@ public:
     quick_stop = 0;
     std::shared_ptr<Tree<DeviceAdapter>> treePtr(new Tree<DeviceAdapter>());
     std::shared_ptr<TreeBuilder<DeviceAdapter>> tb(new TreeBuilder<DeviceAdapter>(treePtr));
-    tb->build(ot, corner, radii);
+    //tb->build(ot, corner, radii);
+
+    //tb->write();
+    tb->load("dataset.vtk");
     dataSetFieldAdd.AddPointField(tb->getCSG(), "radius", radii);
 
 #else
