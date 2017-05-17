@@ -62,7 +62,7 @@ public:
     VTKM_EXEC
     vtkm::Float32 rcp_safe(vtkm::Float32 f) const { return rcp((fabs(f) < 1e-8f) ? 1e-8f : f); }
   public:
-    VTKM_CONT_EXPORT
+	  VTKM_CONT
     Intersector(bool occlusion,
                 vtkm::Float32 maxDistance,
         const vtkm::cont::DynamicCellSet *cellset)
@@ -72,6 +72,10 @@ public:
     {
     vtkm::cont::CellSetExplicit<> cellSetExplicit = Cells->Cast<vtkm::cont::CellSetExplicit<> >();
         ShapesPortal = cellSetExplicit.GetShapesArray(vtkm::TopologyElementTagPoint(), vtkm::TopologyElementTagCell()).GetPortalConstControl();
+
+		vtkm::cont::ArrayHandle<vtkm::UInt8> shps = cellSetExplicit.GetShapesArray(vtkm::TopologyElementTagPoint(), vtkm::TopologyElementTagCell());
+		tIPtr.SetShapes(shps);
+
         //const vtkm::cont::ArrayHandle<vtkm::Int32> indices = cellSetExplicit.GetNumIndicesArray(vtkm::TopologyElementTagPoint(), vtkm::TopologyElementTagCell());
         //vtkm::cont::ArrayHandle<vtkm::Id> conn = cellSetExplicit.GetConnectivityArray(vtkm::TopologyElementTagPoint(), vtkm::TopologyElementTagCell());
 
@@ -82,6 +86,8 @@ public:
 
         OffsetsPortal = cellSetExplicit.GetIndexOffsetArray(vtkm::TopologyElementTagPoint(), vtkm::TopologyElementTagCell()).GetPortalConstControl();
 
+		vtkm::cont::ArrayHandle<vtkm::Id> indx = cellSetExplicit.GetIndexOffsetArray(vtkm::TopologyElementTagPoint(), vtkm::TopologyElementTagCell());
+		tIPtr.SetOffset(indx);
 
     }
     typedef void ControlSignature(FieldIn<>,
@@ -211,7 +217,7 @@ public:
         }
 
 #else
-    tIPtr.query(ShapesPortal, OffsetsPortal, points, scalars, rayOrigin, rayDir, fin_type, face,fin_offset, fin_center, minDistance, hitIndex, tree);
+    tIPtr.query(points, scalars, rayOrigin, rayDir, fin_type, face,fin_offset, fin_center, minDistance, hitIndex, tree);
 //    vtkm::UInt8 tree_fin_type = 0;
 //    vtkm::UInt8 tree_face = 0;
 //    vtkm::Id tree_fin_offset = 0, tree_hitIndex;
@@ -395,7 +401,7 @@ public:
 
 
 
-  VTKM_CONT_EXPORT
+VTKM_CONT
   void run(Ray<DeviceAdapter> &rays,
            const vtkm::cont::DynamicCellSet *cells,
            vtkm::cont::DynamicArrayHandleCoordinateSystem coordsHandle,
