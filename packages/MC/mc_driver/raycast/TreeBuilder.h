@@ -271,7 +271,7 @@ protected:
           AddPoint(new_up[def::X],
                   new_up[def::Y],
                   new_up[def::Z]);//dataSetBuilder->AddPoint(new_up[def::X],new_up[def::Y],new_up[def::Z]);
-          AddPoint(0,0,0);//dataSetBuilder->AddPoint(0,0,0);
+          AddPoint((8-ot.matid(0))/8.0,0,0);//dataSetBuilder->AddPoint(0,0,0);
           AddCell(vtkm::CELL_SHAPE_TRIANGLE);//dataSetBuilder->AddCell(vtkm::CELL_SHAPE_TRIANGLE);
           vtxPush();//child_vtx.push_back(treePtr->vtx_cnt++);
           idxvtxPush();//child_idx_vtx.push_back(treePtr->cell_cnt);

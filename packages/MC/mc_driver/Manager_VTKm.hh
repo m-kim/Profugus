@@ -198,7 +198,7 @@ public:
     scene.AddActor(vtkm::rendering::Actor(tb->getCSG().GetCellSet(),
                                           tb->getCSG().GetCoordinateSystem(),
                                           tb->getCSG().GetField("radius"),
-                                          vtkm::rendering::ColorTable("thermal")));
+                                          vtkm::rendering::ColorTable("cool2warm")));
 
     //Create vtkm rendering stuff.
     vtkm::rendering::Camera new_cam;
