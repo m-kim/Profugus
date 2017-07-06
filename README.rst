@@ -1,3 +1,6 @@
+Note for VTK-m integration: the last version of VTK-m I know works is 1ceb46f80286ef69b47b0afb0fd6fcb55e94b7e3.
+
+
 Description
 ***********
 
